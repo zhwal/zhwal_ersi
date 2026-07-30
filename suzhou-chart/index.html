@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>双面苏州 · 工业总产值对比</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<style>
+:root {
+  --bg: #F5F0E8;
+  --ink: #2A241E;
+  --muted: #6B655D;
+  --rule: #D8D0C0;
+  --blue-base: #2E5090;
+  --blue-light: #5B8FB9;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: 'Noto Serif SC', 'Noto Serif CJK SC', 'Songti SC', 'SimSun', serif;
+  background: var(--bg);
+  color: var(--ink);
+}
+
+/* ===== Academic Figure Container ===== */
+.figure-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 1.1rem 1.5rem 0.9rem;
+}
+
+/* ===== Header ===== */
+.figure-header {
+  margin-bottom: 0.45rem;
+  flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.figure-title {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 1.42rem;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.45;
+  letter-spacing: 0.02em;
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.5s cubic-bezier(0.22, 1, 0.36, 1),
+              transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.figure-title.fading {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+
+.figure-note {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 0.68rem;
+  color: var(--muted);
+  font-style: italic;
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.06s,
+              transform 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.06s;
+}
+
+.figure-note.fading {
+  opacity: 0;
+  transform: translateY(-5px);
+}
+
+/* ===== Chart Area ===== */
+.chart-stage {
+  flex: 1;
+  position: relative;
+  min-height: 0;
+}
+
+.chart-panel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(28px) scale(0.985);
+  transform-origin: center center;
+  transition: opacity 0.65s cubic-bezier(0.22, 1, 0.36, 1),
+              transform 0.65s cubic-bezier(0.22, 1, 0.36, 1),
+              visibility 0.65s;
+}
+
+.chart-panel.active {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(0) scale(1);
+}
+
+.chart-panel.exit {
+  opacity: 0;
+  transform: translateX(-28px) scale(0.985);
+}
+
+.chart-wrap {
+  width: 100%;
+  height: 100%;
+}
+
+/* ===== Footer Controls ===== */
+.figure-footer {
+  margin-top: 0.45rem;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.view-toggle {
+  position: relative;
+  display: inline-flex;
+  gap: 0;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  overflow: hidden;
+  background: rgba(255,255,255,0.55);
+}
+
+.view-toggle button {
+  position: relative;
+  z-index: 1;
+  font-family: 'Noto Serif SC', serif;
+  font-size: 0.66rem;
+  font-weight: 600;
+  padding: 0.3rem 0.75rem;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 0.35s ease;
+  white-space: nowrap;
+}
+
+.view-toggle button:hover {
+  color: var(--blue-base);
+}
+
+.view-toggle button.active {
+  color: #FFFFFF;
+}
+
+.toggle-slider {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: var(--blue-base);
+  border-radius: 3px;
+  z-index: 0;
+  transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1), width 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 768px) {
+  .figure-container { padding: 1.2rem 1.4rem 1rem; }
+  .figure-title { font-size: 1.05rem; }
+  .figure-footer { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+  .view-toggle button { padding: 0.38rem 0.8rem; font-size: 0.72rem; }
+}
+
+@media (max-width: 480px) {
+  .figure-container { padding: 0.9rem 1rem 0.8rem; }
+  .figure-title { font-size: 0.95rem; }
+  .figure-note { font-size: 0.72rem; }
+}
+</style>
+</head>
+<body>
+
+<div class="figure-container" style="position: relative; text-align: center">
+
+  <!-- Header -->
+  <div class="figure-header">
+    <div class="figure-title" id="figureTitle">2023年全国城市规上工业总产值前十位</div>
+  </div>
+
+  <!-- Chart Stage -->
+  <div class="chart-stage">
+    <div class="chart-panel active" id="panelFront">
+      <div class="chart-wrap" id="chartFront"></div>
+    </div>
+    <div class="chart-panel" id="panelBack">
+      <div class="chart-wrap" id="chartBack"></div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="figure-footer">
+    <div class="view-toggle" id="viewToggle">
+      <div class="toggle-slider" id="toggleSlider"></div>
+      <button class="active" onclick="switchView('front')" id="btnFront">全国排名</button>
+      <button onclick="switchView('back')" id="btnBack">苏州分区县</button>
+    </div>
+    <div class="figure-note" id="figureNote">单位：万亿元；苏州以4.43万亿元位列全国第二</div>
+  </div>
+
+</div>
+
+<script>
+// ===== Data =====
+const nationalData = [
+  { name: '深圳', value: 4.85, rank: 1 },
+  { name: '苏州', value: 4.43, rank: 2 },
+  { name: '上海', value: 3.94, rank: 3 },
+  { name: '佛山', value: 3.02, rank: 4 },
+  { name: '重庆', value: 2.62, rank: 5 },
+  { name: '北京', value: 2.55, rank: 6 },
+  { name: '无锡', value: 2.50, rank: 7 },
+  { name: '东莞', value: 2.47, rank: 8 },
+  { name: '宁波', value: 2.47, rank: 9 },
+  { name: '天津', value: 2.40, rank: 10 }
+];
+
+const suzhouData = [
+  { name: '昆山市', value: 11334.97 },
+  { name: '吴中区 (含工业园区)', value: 8649.45 },
+  { name: '张家港市', value: 6972.63 },
+  { name: '常熟市', value: 4749.85 },
+  { name: '吴江区', value: 4737.01 },
+  { name: '虎丘区', value: 3326.70 },
+  { name: '太仓市', value: 3003.88 },
+  { name: '相城区', value: 1944.95 },
+  { name: '姑苏区', value: 59.13 }
+];
+
+const blueGradient = new echarts.graphic.LinearGradient(0, 0, 1, 0, [
+  { offset: 0, color: '#2E5090' },
+  { offset: 1, color: '#5B8FB9' }
+]);
+
+const commonFont = "'Noto Serif SC','Noto Serif CJK SC','Songti SC','SimSun',serif";
+
+// ===== FRONT Chart =====
+const frontChart = echarts.init(document.getElementById('chartFront'));
+const frontOption = {
+  backgroundColor: 'transparent',
+  animationDuration: 900,
+  animationEasing: 'cubicOut',
+  tooltip: {
+    trigger: 'axis',
+    axisPointer: { type: 'shadow', shadowStyle: { color: 'rgba(46,80,144,0.08)' } },
+    backgroundColor: '#FFFFFF',
+    borderColor: '#D8D0C0',
+    borderWidth: 1,
+    textStyle: { color: '#2A241E', fontSize: 11, fontFamily: commonFont },
+    formatter: function(params) {
+      const p = params[0];
+      return '<strong>' + p.name + '</strong><br/>' +
+             '排名：第 ' + p.data.rank + ' 名<br/>' +
+             '规上工业总产值：<span style="color:#2E5090;font-weight:700;">' + p.value.toFixed(2) + '</span> 万亿元';
+    }
+  },
+  grid: {
+    left: 'center',
+    width: '78%',
+    top: '2%',
+    bottom: '2%',
+    containLabel: true
+  },
+  xAxis: {
+    type: 'value',
+    name: '万亿元',
+    nameTextStyle: { color: '#6B655D', fontSize: 10, fontFamily: commonFont, padding: [0, 0, 0, 4] },
+    axisLabel: { color: '#6B655D', fontSize: 9, fontFamily: commonFont },
+    splitLine: { lineStyle: { color: '#E0DCD4', type: 'solid', width: 0.5 } },
+    axisLine: { lineStyle: { color: '#C8C2B8', width: 0.8 } },
+    axisTick: { show: false }
+  },
+  yAxis: {
+    type: 'category',
+    inverse: true,
+    data: nationalData.map(d => d.name),
+    axisLabel: {
+      color: '#2A241E',
+      fontSize: 10,
+      fontWeight: 600,
+      fontFamily: commonFont,
+      formatter: function(v) {
+        if (v === '苏州') return '{highlight|' + v + '}';
+        return v;
+      },
+      rich: {
+        highlight: { color: '#2E5090', fontWeight: 700, fontSize: 11 }
+      }
+    },
+    axisLine: { lineStyle: { color: '#C8C2B8', width: 0.8 } },
+    axisTick: { show: false }
+  },
+  series: [{
+    type: 'bar',
+    data: nationalData.map((d) => ({
+      value: d.value,
+      rank: d.rank,
+      itemStyle: { color: blueGradient, borderRadius: [0, 2, 2, 0] }
+    })),
+    barWidth: 18,
+    label: {
+      show: true,
+      position: 'right',
+      color: '#2A241E',
+      fontSize: 9,
+      fontWeight: 600,
+      fontFamily: commonFont,
+      formatter: function(p) { return p.value.toFixed(2); }
+    },
+    emphasis: {
+      itemStyle: { color: '#7BA3C4' }
+    }
+  }]
+};
+frontChart.setOption(frontOption);
+
+// ===== BACK Chart =====
+const backChart = echarts.init(document.getElementById('chartBack'));
+const backOption = {
+  backgroundColor: 'transparent',
+  animationDuration: 900,
+  animationEasing: 'cubicOut',
+  tooltip: {
+    trigger: 'axis',
+    axisPointer: { type: 'shadow', shadowStyle: { color: 'rgba(46,80,144,0.08)' } },
+    backgroundColor: '#FFFFFF',
+    borderColor: '#D8D0C0',
+    borderWidth: 1,
+    textStyle: { color: '#2A241E', fontSize: 11, fontFamily: commonFont },
+    formatter: function(params) {
+      const p = params[0];
+      return '<strong>' + p.name + '</strong><br/>' +
+             '规上工业总产值：<span style="color:#2E5090;font-weight:700;">' + p.value.toFixed(2) + '</span> 亿元';
+    }
+  },
+  grid: {
+    left: 'center',
+    width: '78%',
+    top: '2%',
+    bottom: '2%',
+    containLabel: true
+  },
+  xAxis: {
+    type: 'value',
+    name: '亿元',
+    nameTextStyle: { color: '#6B655D', fontSize: 10, fontFamily: commonFont, padding: [0, 0, 0, 4] },
+    axisLabel: { color: '#6B655D', fontSize: 9, fontFamily: commonFont },
+    splitLine: { lineStyle: { color: '#E0DCD4', type: 'solid', width: 0.5 } },
+    axisLine: { lineStyle: { color: '#C8C2B8', width: 0.8 } },
+    axisTick: { show: false }
+  },
+  yAxis: {
+    type: 'category',
+    inverse: true,
+    data: suzhouData.map(d => d.name),
+    axisLabel: {
+      color: '#2A241E',
+      fontSize: 9,
+      fontWeight: 600,
+      fontFamily: commonFont,
+      lineHeight: 14
+    },
+    axisLine: { lineStyle: { color: '#C8C2B8', width: 0.8 } },
+    axisTick: { show: false }
+  },
+  series: [{
+    type: 'bar',
+    data: suzhouData.map((d) => ({
+      value: d.value,
+      itemStyle: { color: blueGradient, borderRadius: [0, 2, 2, 0] }
+    })),
+    barWidth: 18,
+    label: {
+      show: true,
+      position: 'right',
+      color: '#2A241E',
+      fontSize: 9,
+      fontWeight: 600,
+      fontFamily: commonFont,
+      formatter: function(p) { return p.value.toFixed(2); }
+    },
+    emphasis: {
+      itemStyle: { color: '#7BA3C4' }
+    }
+  }]
+};
+backChart.setOption(backOption);
+
+// ===== Toggle Slider Positioning =====
+function updateSlider() {
+  const activeBtn = document.querySelector('.view-toggle button.active');
+  const slider = document.getElementById('toggleSlider');
+  if (activeBtn && slider) {
+    slider.style.width = activeBtn.offsetWidth + 'px';
+    slider.style.transform = 'translateX(' + activeBtn.offsetLeft + 'px)';
+  }
+}
+
+// Initial slider position
+window.addEventListener('load', updateSlider);
+setTimeout(updateSlider, 0);
+
+// ===== View Switching =====
+function switchView(view) {
+  const panelFront = document.getElementById('panelFront');
+  const panelBack = document.getElementById('panelBack');
+  const btnFront = document.getElementById('btnFront');
+  const btnBack = document.getElementById('btnBack');
+  const title = document.getElementById('figureTitle');
+  const note = document.getElementById('figureNote');
+
+  if (view === 'front' && panelFront.classList.contains('active')) return;
+  if (view === 'back' && panelBack.classList.contains('active')) return;
+
+  // Animate header text
+  title.classList.add('fading');
+  note.classList.add('fading');
+
+  // Animate panels
+  if (view === 'front') {
+    panelBack.classList.add('exit');
+    panelBack.classList.remove('active');
+    setTimeout(function() {
+      panelFront.classList.add('active');
+      panelFront.classList.remove('exit');
+    }, 60);
+  } else {
+    panelFront.classList.add('exit');
+    panelFront.classList.remove('active');
+    setTimeout(function() {
+      panelBack.classList.add('active');
+      panelBack.classList.remove('exit');
+    }, 60);
+  }
+
+  // Update buttons
+  btnFront.classList.toggle('active', view === 'front');
+  btnBack.classList.toggle('active', view === 'back');
+  updateSlider();
+
+  // Update text after fade out
+  setTimeout(function() {
+    if (view === 'front') {
+      title.textContent = '2023年全国城市规上工业总产值前十位';
+      note.textContent = '单位：万亿元；苏州以4.43万亿元位列全国第二';
+    } else {
+      title.textContent = '2023年苏州市分区县规上工业总产值';
+      note.textContent = '单位：亿元；昆山市以1.13万亿元领跑';
+    }
+    title.classList.remove('fading');
+    note.classList.remove('fading');
+  }, 500);
+
+  // Resize charts
+  setTimeout(function() {
+    frontChart.resize();
+    backChart.resize();
+  }, 150);
+}
+
+// ===== Resize Handler =====
+window.addEventListener('resize', function() {
+  frontChart.resize();
+  backChart.resize();
+  updateSlider();
+});
+</script>
+</body>
+</html>
