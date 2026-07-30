@@ -69,7 +69,7 @@ body {
 
 .figure-note {
   font-family: 'Noto Serif SC', serif;
-  font-size: 0.68rem;
+  font-size: 0.82rem;
   color: var(--muted);
   font-style: italic;
   opacity: 1;
@@ -144,9 +144,9 @@ body {
   position: relative;
   z-index: 1;
   font-family: 'Noto Serif SC', serif;
-  font-size: 0.66rem;
+  font-size: 0.80rem;
   font-weight: 600;
-  padding: 0.3rem 0.75rem;
+  padding: 0.36rem 0.9rem;
   border: none;
   background: transparent;
   color: var(--muted);
@@ -266,7 +266,7 @@ const frontOption = {
     backgroundColor: '#FFFFFF',
     borderColor: '#D8D0C0',
     borderWidth: 1,
-    textStyle: { color: '#2A241E', fontSize: 11, fontFamily: commonFont },
+    textStyle: { color: '#2A241E', fontSize: 13, fontFamily: commonFont },
     formatter: function(params) {
       const p = params[0];
       return '<strong>' + p.name + '</strong><br/>' +
@@ -284,8 +284,8 @@ const frontOption = {
   xAxis: {
     type: 'value',
     name: '万亿元',
-    nameTextStyle: { color: '#6B655D', fontSize: 10, fontFamily: commonFont, padding: [0, 0, 0, 4] },
-    axisLabel: { color: '#6B655D', fontSize: 9, fontFamily: commonFont },
+    nameTextStyle: { color: '#6B655D', fontSize: 12, fontFamily: commonFont, padding: [0, 0, 0, 4] },
+    axisLabel: { color: '#6B655D', fontSize: 11, fontFamily: commonFont },
     splitLine: { lineStyle: { color: '#E0DCD4', type: 'solid', width: 0.5 } },
     axisLine: { lineStyle: { color: '#C8C2B8', width: 0.8 } },
     axisTick: { show: false }
@@ -296,7 +296,7 @@ const frontOption = {
     data: nationalData.map(d => d.name),
     axisLabel: {
       color: '#2A241E',
-      fontSize: 10,
+      fontSize: 12,
       fontWeight: 600,
       fontFamily: commonFont,
       formatter: function(v) {
@@ -304,7 +304,7 @@ const frontOption = {
         return v;
       },
       rich: {
-        highlight: { color: '#2E5090', fontWeight: 700, fontSize: 11 }
+        highlight: { color: '#2E5090', fontWeight: 700, fontSize: 13 }
       }
     },
     axisLine: { lineStyle: { color: '#C8C2B8', width: 0.8 } },
@@ -317,12 +317,12 @@ const frontOption = {
       rank: d.rank,
       itemStyle: { color: blueGradient, borderRadius: [0, 2, 2, 0] }
     })),
-    barWidth: 18,
+    barWidth: 22,
     label: {
       show: true,
       position: 'right',
       color: '#2A241E',
-      fontSize: 9,
+      fontSize: 11,
       fontWeight: 600,
       fontFamily: commonFont,
       formatter: function(p) { return p.value.toFixed(2); }
@@ -346,7 +346,7 @@ const backOption = {
     backgroundColor: '#FFFFFF',
     borderColor: '#D8D0C0',
     borderWidth: 1,
-    textStyle: { color: '#2A241E', fontSize: 11, fontFamily: commonFont },
+    textStyle: { color: '#2A241E', fontSize: 13, fontFamily: commonFont },
     formatter: function(params) {
       const p = params[0];
       return '<strong>' + p.name + '</strong><br/>' +
@@ -363,8 +363,8 @@ const backOption = {
   xAxis: {
     type: 'value',
     name: '亿元',
-    nameTextStyle: { color: '#6B655D', fontSize: 10, fontFamily: commonFont, padding: [0, 0, 0, 4] },
-    axisLabel: { color: '#6B655D', fontSize: 9, fontFamily: commonFont },
+    nameTextStyle: { color: '#6B655D', fontSize: 12, fontFamily: commonFont, padding: [0, 0, 0, 4] },
+    axisLabel: { color: '#6B655D', fontSize: 11, fontFamily: commonFont },
     splitLine: { lineStyle: { color: '#E0DCD4', type: 'solid', width: 0.5 } },
     axisLine: { lineStyle: { color: '#C8C2B8', width: 0.8 } },
     axisTick: { show: false }
@@ -375,10 +375,10 @@ const backOption = {
     data: suzhouData.map(d => d.name),
     axisLabel: {
       color: '#2A241E',
-      fontSize: 9,
+      fontSize: 11,
       fontWeight: 600,
       fontFamily: commonFont,
-      lineHeight: 14
+      lineHeight: 16
     },
     axisLine: { lineStyle: { color: '#C8C2B8', width: 0.8 } },
     axisTick: { show: false }
@@ -389,12 +389,12 @@ const backOption = {
       value: d.value,
       itemStyle: { color: blueGradient, borderRadius: [0, 2, 2, 0] }
     })),
-    barWidth: 18,
+    barWidth: 22,
     label: {
       show: true,
       position: 'right',
       color: '#2A241E',
-      fontSize: 9,
+      fontSize: 11,
       fontWeight: 600,
       fontFamily: commonFont,
       formatter: function(p) { return p.value.toFixed(2); }
