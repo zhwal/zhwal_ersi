@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>图表 4.2 — 姑苏区碳排放与碳汇五年变化对比</title>
+<style>
+  :root {
+    --bg: #F5F0E8;
+    --text: #2B2B2B;
+    --text-light: #6E6A63;
+    --grid: #D8D3CB;
+    --axis: #B8B3AB;
+    --carbon: #A95C32;
+    --npp: #3D5C44;
+    --tooltip-bg: rgba(43, 43, 43, 0.95);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    height: 100%;
+    font-family: "Noto Serif SC", "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", "SimSun", serif;
+    background: var(--bg);
+  }
+  body {
+    display: flex; flex-direction: column; align-items: center;
+    padding: 28px 24px 20px;
+    overflow-x: hidden;
+  }
+  .title {
+    font-size: clamp(16px, 2.2vw, 20px); font-weight: 700; color: var(--text);
+    text-align: center; margin-bottom: 4px; letter-spacing: 0.3px;
+  }
+  .subtitle {
+    font-size: clamp(11px, 1.4vw, 12.5px); color: var(--text-light);
+    text-align: center; margin-bottom: 16px;
+  }
+  .chart-wrap {
+    position: relative; width: 100%; max-width: 1100px;
+    flex: 1; min-height: 380px;
+  }
+  .legend-wrap {
+    display: flex; justify-content: center; gap: 32px; margin-top: 12px;
+    flex-shrink: 0;
+  }
+  .legend-item {
+    display: flex; align-items: center; gap: 7px; font-size: clamp(10.5px, 1.3vw, 12px);
+    color: var(--text); user-select: none;
+  }
+  .legend-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    border: 2px solid; background: var(--bg);
+  }
+  .legend-dot.carbon { border-color: var(--carbon); }
+  .legend-dot.npp { border-color: var(--npp); }
+  .legend-square {
+    width: 10px; height: 10px;
+    border: 2px solid var(--npp); background: var(--bg);
+  }
+  canvas { display: block; width: 100%; height: 100%; }
+  .tooltip {
+    position: absolute; pointer-events: none; opacity: 0;
+    background: var(--tooltip-bg); color: #fff;
+    border-radius: 4px; padding: 9px 13px; font-size: 12px;
+    line-height: 1.55; white-space: nowrap;
+    transform: translate(-50%, -112%);
+    transition: opacity 0.12s;
+    z-index: 10; font-family: "Noto Serif SC", "Source Han Serif SC", serif;
+  }
+  .tooltip::after {
+    content: ''; position: absolute; bottom: -5px; left: 50%;
+    transform: translateX(-50%);
+    border-left: 5px solid transparent; border-right: 5px solid transparent;
+    border-top: 5px solid var(--tooltip-bg);
+  }
+  .tooltip.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div class="title">姑苏区碳排放与碳汇五年变化对比（2019–2023）</div>
+
+<div class="chart-wrap" id="chartWrap">
+  <canvas id="chart"></canvas>
+  <div class="tooltip" id="tooltip"></div>
+</div>
+
+<div class="legend-wrap">
+  <div class="legend-item">
+    <div class="legend-dot carbon"></div>
+    <span>碳排放密度（tCO₂/km²）</span>
+  </div>
+  <div class="legend-item">
+    <div class="legend-square"></div>
+    <span>NPP碳汇密度（tCO₂/km²/yr）</span>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// 数据
+// ============================================================
+const YEARS = [2019, 2020, 2021, 2022, 2023];
+const carbonData = [31016, 33359, 35196, 33731, 35696];
+const nppData    = [1522,  1459,  1569,  1488,  1431];
+
+// ============================================================
+// 样式配置
+// ============================================================
+const FONT_SERIF = '14px "Noto Serif SC", "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", SimSun, serif';
+const FONT_AXIS  = '11.5px "Noto Serif SC", "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", SimSun, serif';
+const FONT_LABEL = '10.5px "Noto Serif SC", "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", SimSun, serif';
+const FONT_TITLE = 'bold 20px "Noto Serif SC", "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", SimSun, serif';
+
+const COLORS = {
+  carbon: '#A95C32',
+  carbonFill: 'rgba(169, 92, 50, 0.06)',
+  npp: '#3D5C44',
+  nppFill: 'rgba(61, 92, 68, 0.06)',
+  grid: '#D8D3CB',
+  axis: '#B8B3AB',
+  text: '#2B2B2B',
+  textLight: '#6E6A63'
+};
+
+// 坐标轴范围 — 与原图一致
+const carbonRange = { min: 30000, max: 36000, step: 1000 };
+const nppRange    = { min: 1000,  max: 2000,  step: 200  };
+
+// 绘图区域边距 — 响应式缩放
+const PAD_BASE = { top: 20, right: 88, bottom: 62, left: 76 };
+
+let W, H, plotL, plotR, plotT, plotB, PAD;
+let ctx, canvas, wrap, tooltip;
+let hoverIdx = -1;
+let animProgress = 0;
+let animTarget = 1;
+
+// ============================================================
+// 初始化
+// ============================================================
+window.onload = function() {
+  canvas = document.getElementById('chart');
+  ctx = canvas.getContext('2d');
+  wrap = document.getElementById('chartWrap');
+  tooltip = document.getElementById('tooltip');
+
+  resize();
+  bindEvents();
+  startAnim();
+};
+
+function resize() {
+  const rect = wrap.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  W = rect.width;
+  H = rect.height;
+  canvas.width = Math.floor(W * dpr);
+  canvas.height = Math.floor(H * dpr);
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  // 根据宽度缩放边距
+  const scale = Math.min(1, W / 920);
+  PAD = {
+    top:    PAD_BASE.top    * scale,
+    right:  PAD_BASE.right  * scale,
+    bottom: PAD_BASE.bottom * scale,
+    left:   PAD_BASE.left   * scale
+  };
+
+  plotL = PAD.left;
+  plotR = W - PAD.right;
+  plotT = PAD.top;
+  plotB = H - PAD.bottom;
+}
+
+function bindEvents() {
+  let raf;
+  window.addEventListener('resize', () => {
+    cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(() => { resize(); draw(); });
+  });
+
+  canvas.addEventListener('mousemove', onMouseMove);
+  canvas.addEventListener('mouseleave', onMouseLeave);
+}
+
+// ============================================================
+// 坐标转换
+// ============================================================
+function xOf(i) {
+  return plotL + (i / (YEARS.length - 1)) * (plotR - plotL);
+}
+function yCarbon(v) {
+  return plotB - ((v - carbonRange.min) / (carbonRange.max - carbonRange.min)) * (plotB - plotT);
+}
+function yNpp(v) {
+  return plotB - ((v - nppRange.min) / (nppRange.max - nppRange.min)) * (plotB - plotT);
+}
+
+// ============================================================
+// 动画
+// ============================================================
+function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+
+function startAnim() {
+  animProgress = 0;
+  function step() {
+    animProgress += (animTarget - animProgress) * 0.07;
+    if (animTarget - animProgress < 0.002) animProgress = animTarget;
+    draw();
+    if (animProgress < animTarget) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+// ============================================================
+// 绘图
+// ============================================================
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+
+  const prog = easeOutCubic(animProgress);
+
+  drawGrid();
+  drawAxes();
+  drawAxisLabels();
+  drawCarbonLine(prog);
+  drawNppLine(prog);
+  drawHover();
+}
+
+function drawGrid() {
+  ctx.strokeStyle = COLORS.grid;
+  ctx.lineWidth = 0.6;
+  ctx.setLineDash([3, 3]);
+
+  // 水平网格线
+  for (let v = carbonRange.min; v <= carbonRange.max; v += carbonRange.step) {
+    const y = yCarbon(v);
+    ctx.beginPath(); ctx.moveTo(plotL, y); ctx.lineTo(plotR, y); ctx.stroke();
+  }
+
+  // 垂直网格线
+  for (let i = 0; i < YEARS.length; i++) {
+    const x = xOf(i);
+    ctx.beginPath(); ctx.moveTo(x, plotT); ctx.lineTo(x, plotB); ctx.stroke();
+  }
+
+  ctx.setLineDash([]);
+}
+
+function drawAxes() {
+  ctx.strokeStyle = COLORS.axis;
+  ctx.lineWidth = 0.8;
+
+  // 左、下、右三条轴
+  ctx.beginPath();
+  ctx.moveTo(plotL, plotT); ctx.lineTo(plotL, plotB);
+  ctx.lineTo(plotR, plotB); ctx.lineTo(plotR, plotT);
+  ctx.stroke();
+}
+
+function drawAxisLabels() {
+  // 左轴碳排
+  ctx.fillStyle = COLORS.carbon;
+  ctx.font = FONT_AXIS;
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  for (let v = carbonRange.min; v <= carbonRange.max; v += carbonRange.step) {
+    ctx.fillText(v.toLocaleString(), plotL - 8, yCarbon(v));
+  }
+
+  // 右轴NPP
+  ctx.fillStyle = COLORS.npp;
+  ctx.textAlign = 'left';
+  for (let v = nppRange.min; v <= nppRange.max; v += nppRange.step) {
+    ctx.fillText(v, plotR + 18, yNpp(v));
+  }
+
+  // X轴年份
+  ctx.fillStyle = COLORS.text;
+  ctx.font = FONT_AXIS;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  for (let i = 0; i < YEARS.length; i++) {
+    ctx.fillText(YEARS[i], xOf(i), plotB + 9);
+  }
+
+  // X轴标题
+  ctx.font = FONT_LABEL;
+  ctx.fillStyle = COLORS.text;
+  ctx.textBaseline = 'top';
+  ctx.fillText('年份', plotL + (plotR - plotL) / 2, plotB + 34);
+
+  // 左轴标题
+  ctx.save();
+  ctx.translate(18, plotT + (plotB - plotT) / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.font = FONT_LABEL;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = COLORS.carbon;
+  ctx.fillText('碳排放密度（tCO₂/km²）', 0, 0);
+  ctx.restore();
+
+  // 右轴标题
+  ctx.save();
+  ctx.translate(plotR + 54, plotT + (plotB - plotT) / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.font = FONT_LABEL;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = COLORS.npp;
+  ctx.fillText('NPP碳汇密度（tCO₂/km²/yr）', 0, 0);
+  ctx.restore();
+}
+
+function drawCarbonLine(prog) {
+  const pts = YEARS.map((_, i) => ({ x: xOf(i), y: yCarbon(carbonData[i]) }));
+
+  // 填充面积
+  ctx.fillStyle = COLORS.carbonFill;
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, plotB);
+  for (let i = 0; i < pts.length; i++) {
+    const px = pts[0].x + (pts[i].x - pts[0].x) * prog;
+    ctx.lineTo(px, pts[i].y);
+  }
+  const lastX = pts[0].x + (pts[pts.length - 1].x - pts[0].x) * prog;
+  ctx.lineTo(lastX, plotB);
+  ctx.closePath();
+  ctx.fill();
+
+  // 折线
+  ctx.strokeStyle = COLORS.carbon;
+  ctx.lineWidth = 2.4;
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  for (let i = 0; i < pts.length; i++) {
+    const px = pts[0].x + (pts[i].x - pts[0].x) * prog;
+    if (i === 0) ctx.moveTo(px, pts[i].y);
+    else ctx.lineTo(px, pts[i].y);
+  }
+  ctx.stroke();
+
+  // 数据点 + 标注
+  for (let i = 0; i < pts.length; i++) {
+    const px = pts[0].x + (pts[i].x - pts[0].x) * prog;
+    drawHollowCircle(px, pts[i].y, COLORS.carbon, i === hoverIdx ? 6.5 : 5);
+
+    // 数值在点上方
+    ctx.fillStyle = COLORS.carbon;
+    ctx.font = 'bold 10px "Noto Serif SC", "Source Han Serif SC", serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(carbonData[i].toLocaleString(), px, pts[i].y - 10);
+  }
+}
+
+function drawNppLine(prog) {
+  const pts = YEARS.map((_, i) => ({ x: xOf(i), y: yNpp(nppData[i]) }));
+
+  // 填充面积
+  ctx.fillStyle = COLORS.nppFill;
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, plotB);
+  for (let i = 0; i < pts.length; i++) {
+    const px = pts[0].x + (pts[i].x - pts[0].x) * prog;
+    ctx.lineTo(px, pts[i].y);
+  }
+  const lastX = pts[0].x + (pts[pts.length - 1].x - pts[0].x) * prog;
+  ctx.lineTo(lastX, plotB);
+  ctx.closePath();
+  ctx.fill();
+
+  // 折线
+  ctx.strokeStyle = COLORS.npp;
+  ctx.lineWidth = 2.4;
+  ctx.beginPath();
+  for (let i = 0; i < pts.length; i++) {
+    const px = pts[0].x + (pts[i].x - pts[0].x) * prog;
+    if (i === 0) ctx.moveTo(px, pts[i].y);
+    else ctx.lineTo(px, pts[i].y);
+  }
+  ctx.stroke();
+
+  // 数据点 + 标注
+  for (let i = 0; i < pts.length; i++) {
+    const px = pts[0].x + (pts[i].x - pts[0].x) * prog;
+    drawHollowSquare(px, pts[i].y, COLORS.npp, i === hoverIdx ? 6.5 : 5);
+
+    ctx.fillStyle = COLORS.npp;
+    ctx.font = 'bold 10px "Noto Serif SC", "Source Han Serif SC", serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(nppData[i].toString(), px, pts[i].y - 10);
+  }
+}
+
+function drawHollowCircle(cx, cy, color, r) {
+  ctx.fillStyle = '#F5F0E8';
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2.0;
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
+}
+
+function drawHollowSquare(cx, cy, color, size) {
+  const s = size * 2;
+  ctx.fillStyle = '#F5F0E8';
+  ctx.fillRect(cx - size, cy - size, s, s);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2.0;
+  ctx.strokeRect(cx - size, cy - size, s, s);
+}
+
+function drawHover() {
+  if (hoverIdx < 0) return;
+  const x = xOf(hoverIdx);
+
+  // 垂直虚线
+  ctx.strokeStyle = '#999';
+  ctx.lineWidth = 0.7;
+  ctx.setLineDash([4, 4]);
+  ctx.beginPath(); ctx.moveTo(x, plotT); ctx.lineTo(x, plotB); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // 高亮光晕
+  const cx = xOf(hoverIdx);
+  drawHalo(cx, yCarbon(carbonData[hoverIdx]), COLORS.carbon);
+  drawHalo(cx, yNpp(nppData[hoverIdx]), COLORS.npp);
+}
+
+function drawHalo(cx, cy, color) {
+  ctx.fillStyle = color + '22';
+  ctx.beginPath(); ctx.arc(cx, cy, 14, 0, Math.PI * 2); ctx.fill();
+}
+
+// ============================================================
+// 鼠标交互
+// ============================================================
+function onMouseMove(e) {
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+
+  let found = -1;
+  let minDist = 60;
+  for (let i = 0; i < YEARS.length; i++) {
+    const x = xOf(i);
+    const yc = yCarbon(carbonData[i]);
+    const yn = yNpp(nppData[i]);
+    const dc = Math.abs(mx - x);
+    const dy = Math.min(Math.abs(my - yc), Math.abs(my - yn));
+    const d = Math.sqrt(dc * dc + dy * dy);
+    if (dc < minDist && d < minDist) { minDist = d; found = i; }
+  }
+
+  if (found !== hoverIdx) {
+    hoverIdx = found;
+    if (found >= 0) {
+      tooltip.innerHTML =
+        '<strong>' + YEARS[found] + '年</strong><br>' +
+        '<span style="color:#FFB088">● 碳排放密度：' + carbonData[found].toLocaleString() + ' tCO₂/km²</span><br>' +
+        '<span style="color:#88D088">■ NPP碳汇密度：' + nppData[found] + ' tCO₂/km²/yr</span>';
+      tooltip.classList.add('show');
+      let tx = xOf(found);
+      let ty = Math.min(yCarbon(carbonData[found]), yNpp(nppData[found])) - 12;
+      // 边界修正
+      const tw = tooltip.offsetWidth || 200;
+      if (tx < tw / 2 + 10) tx = tw / 2 + 10;
+      if (tx > W - tw / 2 - 10) tx = W - tw / 2 - 10;
+      if (ty < 30) ty = Math.max(yCarbon(carbonData[found]), yNpp(nppData[found])) + 40;
+      tooltip.style.left = tx + 'px';
+      tooltip.style.top = ty + 'px';
+    } else {
+      tooltip.classList.remove('show');
+    }
+    draw();
+  }
+}
+
+function onMouseLeave() {
+  hoverIdx = -1;
+  tooltip.classList.remove('show');
+  draw();
+}
+</script>
+</body>
+</html>
