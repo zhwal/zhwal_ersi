@@ -97,7 +97,7 @@ body {
 
   <div class="figure-header">
     <div class="figure-title">八大古典园林避免排放贡献排名</div>
-    <div class="figure-note">合计避免排放：14,611 kg CO₂ / 年</div>
+    <div class="figure-note">合计避免排放：14,611 kg CO₂ / 年；留园以4,451 kg居首，占总避免排放的30.5%</div>
   </div>
 
   <div class="chart-stage">
@@ -105,7 +105,7 @@ body {
   </div>
 
   <div class="figure-footer">
-    <div class="figure-note">单位：kg CO₂ / 年；留园以4,451 kg居首，占总避免排放的30.5%</div>
+    <div class="figure-note">单位：kg CO₂ / 年</div>
   </div>
 
 </div>
@@ -171,7 +171,7 @@ const option = {
     data: data.map(d => d.name),
     axisLabel: {
       color: '#2A241E',
-      fontSize: 13,
+      fontSize: 12,
       fontWeight: 600,
       fontFamily: commonFont,
       formatter: function(v) {
@@ -179,7 +179,7 @@ const option = {
         return v;
       },
       rich: {
-        highlight: { color: '#2D5A27', fontWeight: 700, fontSize: 14 }
+        highlight: { color: '#2D5A27', fontWeight: 700, fontSize: 13 }
       }
     },
     axisLine: { lineStyle: { color: '#C8C2B8', width: 0.8 } },
@@ -201,7 +201,7 @@ const option = {
       fontWeight: 600,
       fontFamily: commonFont,
       formatter: function(p) {
-        return p.value.toLocaleString() + ' kg  (' + p.data.pct + ')';
+        return p.value.toLocaleString() + ' kg';
       }
     },
     emphasis: {
