@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>苏州古典园林碳汇与各区县碳排对比图</title>
+  <style>
+    :root {
+      --rice-paper: #F5F0E8;
+      --ink: #2A241E;
+      --ink-light: #3D362D;
+      --stone: #8A8070;
+      --rule: #D8D0C0;
+      --moss: #4A6741;
+      --moss-dark: #1F2E1A;
+      --copper-green: #5B8C5A;
+      --ochre: #A0522D;
+      --accent-red: #B8453A;
+      --dashed-box: #B8453A;
+      --ease-out-expo: cubic-bezier(0.19, 1, 0.22, 1);
+      --ease-out-quart: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Songti SC', 'SimSun', 'Noto Serif SC', serif;
+      background: var(--rice-paper);
+      color: var(--ink);
+      line-height: 1.75;
+      min-height: 100vh;
+      padding: 2.5rem 2rem 4rem;
+    }
+
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2rem;
+      animation: fadeInDown 0.7s var(--ease-out-expo) both;
+    }
+
+    h1 {
+      font-family: 'Songti SC', 'SimSun', 'Noto Serif SC', serif;
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: var(--moss-dark);
+      letter-spacing: 0.02em;
+      margin-bottom: 0.4rem;
+    }
+
+    .subtitle {
+      font-size: 0.9rem;
+      color: var(--stone);
+      max-width: 640px;
+      margin: 0 auto;
+      animation: fadeInDown 0.7s 0.12s var(--ease-out-expo) both;
+    }
+
+    /* ===== Keyframes ===== */
+    @keyframes fadeInDown {
+      from { opacity: 0; transform: translateY(-10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes barSlideIn {
+      from { clip-path: inset(0 100% 0 0); }
+      to   { clip-path: inset(0 0% 0 0); }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+    @keyframes dashPulse {
+      0%, 100% { stroke-opacity: 1; }
+      50%       { stroke-opacity: 0.45; }
+    }
+    @keyframes hintPulse {
+      0%, 100% { opacity: 0.85; }
+      50%       { opacity: 0.4; }
+    }
+    @keyframes modalIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+    @keyframes modalCardIn {
+      from { opacity: 0; transform: translateY(28px) scale(0.97); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .chart-area {
+      position: relative;
+    }
+
+    .legend {
+      display: flex;
+      justify-content: flex-end;
+      gap: 1.5rem;
+      margin-bottom: 0.8rem;
+      padding-right: 100px;
+      font-size: 0.82rem;
+      color: var(--ink-light);
+      font-family: 'Songti SC', 'SimSun', 'Noto Serif SC', serif;
+      animation: fadeIn 0.5s 0.25s var(--ease-out-expo) both;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .legend-dot {
+      width: 13px;
+      height: 13px;
+      border-radius: 2px;
+    }
+
+    .legend-dot.emission { background: var(--ochre); }
+    .legend-dot.sink { background: var(--copper-green); }
+
+    #main-chart {
+      width: 100%;
+      height: 540px;
+      position: relative;
+      user-select: none;
+      overflow: visible;
+    }
+
+    #main-chart svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .bar-label {
+      font-family: 'Songti SC', 'SimSun', 'Noto Serif SC', serif;
+      font-size: 13px;
+      fill: var(--ink);
+    }
+
+    .bar-value {
+      font-family: 'Songti SC', 'SimSun', 'Noto Serif SC', serif;
+      font-size: 11px;
+      fill: var(--stone);
+    }
+
+    .axis-text {
+      font-family: 'Songti SC', 'SimSun', 'Noto Serif SC', serif;
+      font-size: 11px;
+      fill: var(--stone);
+    }
+
+    .axis-title {
+      font-family: 'Songti SC', 'SimSun', 'Noto Serif SC', serif;
+      font-size: 12px;
+      font-style: italic;
+      fill: var(--ink-light);
+      font-weight: 400;
+    }
+
+    .grid-line {
+      stroke: var(--rule);
+      stroke-width: 0.8;
+      stroke-dasharray: 2, 3;
+    }
+
+    .bar-emission {
+      fill: var(--ochre);
+      cursor: pointer;
+      transition: fill 0.22s var(--ease-out-quart), filter 0.22s var(--ease-out-quart), stroke 0.22s var(--ease-out-quart);
+    }
+
+    .bar-emission:hover {
+      fill: #C8652F;
+      filter: brightness(1.1);
+      stroke: #8B3A1A;
+      stroke-width: 1.5;
+    }
+
+    .bar-sink {
+      fill: var(--copper-green);
+      stroke: var(--moss-dark);
+      stroke-width: 1;
+      cursor: pointer;
+      transition: fill 0.22s var(--ease-out-quart), stroke 0.22s var(--ease-out-quart);
+    }
+
+    .bar-sink:hover {
+      fill: #6FAF6E;
+      stroke: var(--moss-dark);
+      stroke-width: 2;
+    }
+
+    .dashed-box {
+      fill: rgba(184, 69, 58, 0.03);
+      stroke: var(--dashed-box);
+      stroke-width: 1.6;
+      stroke-dasharray: 6, 4;
+      cursor: pointer;
+      pointer-events: all;
+      transition: fill 0.22s var(--ease-out-quart);
+      animation: dashPulse 2.8s ease-in-out infinite;
+    }
+
+    .dashed-box:hover {
+      fill: rgba(184, 69, 58, 0.1);
+      animation: none;
+    }
+
+    .dashed-box-hint {
+      font-family: 'Songti SC', 'SimSun', 'Noto Serif SC', serif;
+      font-size: 11px;
+      fill: var(--accent-red);
+      opacity: 0.85;
+      pointer-events: none;
+      font-style: italic;
+      animation: hintPulse 2.8s ease-in-out infinite;
+    }
+
+    /* Tooltip */
+    .tooltip {
+      position: absolute;
+      pointer-events: none;
+      background: rgba(42, 36, 30, 0.92);
+      color: #F5F0E8;
+      padding: 0.55rem 0.75rem;
+      border-radius: 4px;
+      font-family: 'Songti SC', 'SimSun', 'Noto Serif SC', serif;
+      font-size: 0.78rem;
+      line-height: 1.55;
+      white-space: nowrap;
+      opacity: 0;
+      transform: translateY(4px);
+      transition: opacity 0.18s var(--ease-out-quart), transform 0.18s var(--ease-out-quart);
+      z-index: 50;
+      box-shadow: 0 3px 12px rgba(0,0,0,0.2);
+    }
+
+    .tooltip.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .tooltip .tt-name {
+      font-weight: 700;
+      font-size: 0.82rem;
+      margin-bottom: 0.15rem;
+    }
+
+    .tooltip .tt-val {
+      color: #D8D0C0;
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(31, 46, 26, 0.55);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 1.5rem;
+      backdrop-filter: blur(2px);
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.28s var(--ease-out-quart), visibility 0.28s;
+    }
+
+    .modal-overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .modal-card {
+      background: var(--rice-paper);
+      border: 1px solid var(--rule);
+      border-radius: 8px;
+      max-width: min(900px, calc(100vw - 2rem));
+      max-height: calc(100vh - 2rem);
+      width: 100%;
+      padding: 2rem;
+      position: relative;
+      box-shadow: 0 12px 40px rgba(42, 36, 30, 0.15);
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      opacity: 0;
+      transform: translateY(28px) scale(0.97);
+      transition: opacity 0.3s var(--ease-out-expo), transform 0.3s var(--ease-out-expo);
+    }
+
+    .modal-overlay.active .modal-card {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      width: 32px;
+      height: 32px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      color: var(--stone);
+      font-size: 1.4rem;
+      line-height: 1;
+      transition: color 0.2s;
+      font-family: 'Songti SC', 'SimSun', serif;
+    }
+
+    .modal-close:hover {
+      color: var(--ink);
+    }
+
+    .modal-title {
+      font-family: 'Songti SC', 'SimSun', 'Noto Serif SC', serif;
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: var(--moss-dark);
+      margin-bottom: 0.2rem;
+    }
+
+    .modal-subtitle {
+      font-size: 0.85rem;
+      color: var(--stone);
+      margin-bottom: 1.5rem;
+      font-family: 'Songti SC', 'SimSun', 'Noto Serif SC', serif;
+    }
+
+    #zoom-chart {
+      width: 100%;
+      min-height: 220px;
+      height: clamp(220px, 50vh, 420px);
+      flex-shrink: 0;
+    }
+
+    #zoom-chart svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .zoom-bar-label {
+      font-family: 'Songti SC', 'SimSun', 'Noto Serif SC', serif;
+      font-size: 13px;
+      fill: var(--ink);
+      font-weight: 600;
+    }
+
+    .zoom-bar-value {
+      font-family: 'Songti SC', 'SimSun', 'Noto Serif SC', serif;
+      font-size: 12px;
+      fill: var(--stone);
+    }
+
+    .zoom-axis-text {
+      font-family: 'Songti SC', 'SimSun', 'Noto Serif SC', serif;
+      font-size: 11px;
+      fill: var(--stone);
+    }
+
+    .zoom-note {
+      margin-top: 1.2rem;
+      padding: 0.9rem 1rem;
+      background: rgba(184, 69, 58, 0.06);
+      border-left: 3px solid var(--accent-red);
+      border-radius: 0 4px 4px 0;
+      font-size: 0.85rem;
+      color: var(--ink-light);
+      font-family: 'Songti SC', 'SimSun', 'Noto Serif SC', serif;
+    }
+
+    .zoom-note strong {
+      color: var(--accent-red);
+      font-weight: 700;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+
+    @media (max-width: 640px) {
+      body { padding: 1.5rem 1rem 3rem; }
+      h1 { font-size: 1.4rem; }
+      #main-chart { height: 480px; }
+      .legend { justify-content: flex-start; flex-direction: column; gap: 0.3rem; }
+      .modal-card { padding: 1.5rem 1rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>苏州古典园林碳汇与区县碳排放对比</h1>
+      <p class="subtitle">八座世界遗产古典园林合计年碳汇 161.03 吨 CO₂，在区县百万吨级年碳排尺度上几乎不可见。</p>
+    </header>
+
+    <div class="chart-area">
+      <div class="legend">
+        <div class="legend-item">
+          <span class="legend-dot emission"></span>
+          <span>区县碳排放</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-dot sink"></span>
+          <span>古典园林碳汇</span>
+        </div>
+      </div>
+
+      <div id="main-chart">
+        <svg id="main-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+      </div>
+
+      <div class="tooltip" id="tooltip"></div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <button class="modal-close" id="close-magnifier" aria-label="关闭">×</button>
+      <h2 class="modal-title" id="modal-title">对比视图：以吨为单位</h2>
+      <p class="modal-subtitle">八座古典园林合计碳汇 vs 姑苏区年碳排放（吨 CO₂/年）</p>
+      <div id="zoom-chart">
+        <svg id="zoom-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+      </div>
+      <div class="zoom-note" id="zoom-note-text">
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 万吨 CO₂/年, 从大到小排列
+    const districts = [
+      { name: '张家港市', value: 9141.17 },
+      { name: '常熟市', value: 3819.72 },
+      { name: '太仓市', value: 2603.24 },
+      { name: '吴中区（含工业园区）', value: 2602.13 },
+      { name: '吴江区', value: 1751.69 },
+      { name: '昆山市', value: 1222.90 },
+      { name: '虎丘区', value: 718.119 },
+      { name: '姑苏区', value: 274.54379806 }
+    ];
+
+    const garden = { name: '八座古典园林合计碳汇', value: 0.016103 };
+    const gardenTonnes = 161.03;
+    const gusuTonnes = 2745437.9806;
+
+    function renderMainChart() {
+      const container = document.getElementById('main-chart');
+      const svg = document.getElementById('main-svg');
+      const width = container.clientWidth;
+      const height = container.clientHeight;
+      const margin = { top: 20, right: 100, bottom: 52, left: 170 };
+      const chartW = width - margin.left - margin.right;
+      const chartH = height - margin.top - margin.bottom;
+
+      svg.innerHTML = '';
+      svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+
+      const maxValue = 10000;
+      const allItems = [...districts, garden];
+      const n = allItems.length;
+      const barHeight = Math.min(38, chartH / n * 0.55);
+      const gap = chartH / n * 0.45;
+      const xScale = val => (val / maxValue) * chartW;
+
+      const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      g.setAttribute('transform', `translate(${margin.left}, ${margin.top})`);
+      svg.appendChild(g);
+
+      // Grid lines
+      const ticks = [0, 2500, 5000, 7500, 10000];
+      ticks.forEach((tick, ti) => {
+        const x = xScale(tick);
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', x);
+        line.setAttribute('y1', 0);
+        line.setAttribute('x2', x);
+        line.setAttribute('y2', chartH);
+        line.setAttribute('class', 'grid-line');
+        line.style.animation = `fadeIn 0.4s ${0.1 + ti * 0.06}s var(--ease-out-quart) both`;
+        g.appendChild(line);
+
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.setAttribute('x', x);
+        text.setAttribute('y', chartH + 22);
+        text.setAttribute('text-anchor', 'middle');
+        text.setAttribute('class', 'axis-text');
+        text.style.animation = `fadeIn 0.4s ${0.1 + ti * 0.06}s var(--ease-out-quart) both`;
+        text.textContent = tick;
+        g.appendChild(text);
+      });
+
+      // Unit label (italic, bottom-right)
+      const unitLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      unitLabel.setAttribute('x', chartW);
+      unitLabel.setAttribute('y', chartH + 44);
+      unitLabel.setAttribute('text-anchor', 'end');
+      unitLabel.setAttribute('class', 'axis-title');
+      unitLabel.style.animation = `fadeIn 0.5s 0.6s var(--ease-out-quart) both`;
+      unitLabel.textContent = '单位：万吨 CO₂ / 年';
+      g.appendChild(unitLabel);
+
+      // Store y positions for the dashed box
+      let gusuY = null;
+      let gardenY = null;
+
+      // Bars
+      allItems.forEach((item, i) => {
+        const y = i * (barHeight + gap) + gap / 2;
+        const barW = Math.max(2, xScale(item.value));
+        const isGarden = item === garden;
+
+        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        rect.setAttribute('x', 0);
+        rect.setAttribute('y', y);
+        rect.setAttribute('width', barW);
+        rect.setAttribute('height', barHeight);
+        rect.setAttribute('rx', isGarden ? 1 : 2);
+        rect.setAttribute('class', isGarden ? 'bar-sink' : 'bar-emission');
+        rect.setAttribute('data-index', i);
+        if (isGarden) rect.setAttribute('data-garden', 'true');
+        rect.style.animation = `barSlideIn 0.55s ${0.2 + i * 0.04}s var(--ease-out-expo) both`;
+        g.appendChild(rect);
+
+        // Hover listeners
+        rect.addEventListener('mouseenter', (e) => showTooltip(e, item, isGarden));
+        rect.addEventListener('mousemove', (e) => moveTooltip(e));
+        rect.addEventListener('mouseleave', hideTooltip);
+
+        const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        label.setAttribute('x', -10);
+        label.setAttribute('y', y + barHeight / 2 + 5);
+        label.setAttribute('text-anchor', 'end');
+        label.setAttribute('class', 'bar-label');
+        label.style.animation = `fadeIn 0.4s ${0.35 + i * 0.04}s var(--ease-out-quart) both`;
+        label.textContent = item.name;
+        g.appendChild(label);
+
+        const value = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        value.setAttribute('x', barW + 6);
+        value.setAttribute('y', y + barHeight / 2 + 5);
+        value.setAttribute('class', 'bar-value');
+        value.style.animation = `fadeIn 0.4s ${0.4 + i * 0.04}s var(--ease-out-quart) both`;
+        value.textContent = isGarden
+          ? '0.016103'
+          : item.value.toLocaleString('zh-CN', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+        g.appendChild(value);
+
+        if (item.name === '姑苏区') {
+          gusuY = { y, barHeight };
+        }
+        if (isGarden) {
+          gardenY = { y, barHeight };
+        }
+      });
+
+      // Dashed box around Gusu + Garden (including Y-axis labels)
+      if (gusuY && gardenY) {
+        const boxTop = Math.min(gusuY.y, gardenY.y) - 6;
+        const boxBottom = Math.max(gusuY.y + gusuY.barHeight, gardenY.y + gardenY.barHeight) + 6;
+        const boxH = boxBottom - boxTop;
+        const boxW = chartW + margin.left;
+        const boxX = -(margin.left);
+        const boxY = boxTop;
+
+        const boxRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        boxRect.setAttribute('x', boxX);
+        boxRect.setAttribute('y', boxY);
+        boxRect.setAttribute('width', boxW);
+        boxRect.setAttribute('height', boxH);
+        boxRect.setAttribute('rx', 4);
+        boxRect.setAttribute('class', 'dashed-box');
+        boxRect.addEventListener('click', openModal);
+        boxRect.style.animation = `dashPulse 2.8s ease-in-out infinite, fadeIn 0.5s 0.65s var(--ease-out-quart) both`;
+        boxRect.style.animationDelay = '0s, 0.65s';
+        g.appendChild(boxRect);
+
+        const hint = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        hint.setAttribute('x', boxX + boxW - 8);
+        hint.setAttribute('y', boxY + boxH - 6);
+        hint.setAttribute('text-anchor', 'end');
+        hint.setAttribute('class', 'dashed-box-hint');
+        hint.style.animation = `hintPulse 2.8s ease-in-out infinite, fadeIn 0.5s 0.75s var(--ease-out-quart) both`;
+        hint.textContent = '点击查看对比';
+        g.appendChild(hint);
+      }
+    }
+
+    // --- Tooltip ---
+    const tooltip = document.getElementById('tooltip');
+
+    function showTooltip(e, item, isGarden) {
+      const valWan = item.value;
+      const valTon = item === garden ? gardenTonnes : valWan * 10000;
+      tooltip.innerHTML = `
+        <div class="tt-name">${item.name}</div>
+        <div class="tt-val">${valWan.toLocaleString('zh-CN', { minimumFractionDigits: 0, maximumFractionDigits: 8 })} 万吨 CO₂ / 年</div>
+        <div class="tt-val">${valTon.toLocaleString('zh-CN', { minimumFractionDigits: 0, maximumFractionDigits: 4 })} 吨 CO₂ / 年</div>
+      `;
+      tooltip.classList.add('visible');
+      moveTooltip(e);
+    }
+
+    function moveTooltip(e) {
+      const chartArea = document.getElementById('main-chart');
+      const rect = chartArea.getBoundingClientRect();
+      let left = e.clientX - rect.left + 14;
+      let top = e.clientY - rect.top - 14;
+      // Keep tooltip within chart bounds
+      if (left + 200 > rect.width) left = e.clientX - rect.left - 200;
+      if (top < 0) top = e.clientY - rect.top + 14;
+      tooltip.style.left = left + 'px';
+      tooltip.style.top = top + 'px';
+    }
+
+    function hideTooltip() {
+      tooltip.classList.remove('visible');
+    }
+
+    // --- Modal ---
+    const modal = document.getElementById('modal');
+    const closeBtn = document.getElementById('close-magnifier');
+
+    function openModal() {
+      const ratio = Math.round(gusuTonnes / gardenTonnes);
+      document.getElementById('zoom-note-text').innerHTML =
+        `<strong>比例关系：</strong>姑苏区年碳排放（${gusuTonnes.toLocaleString('zh-CN')} 吨）约为八座古典园林年碳汇（${gardenTonnes} 吨）的 <strong>约 ${ratio.toLocaleString('zh-CN')} 倍</strong>。即使在全市碳排放最低的区县面前，园林直接碳汇仍然微乎其微。`;
+      modal.classList.add('active');
+      setTimeout(renderZoomChart, 10);
+    }
+
+    function closeModal() {
+      modal.classList.remove('active');
+    }
+
+    closeBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeModal();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeModal();
+    });
+
+    function renderZoomChart() {
+      const container = document.getElementById('zoom-chart');
+      const svg = document.getElementById('zoom-svg');
+      const width = container.clientWidth;
+      const height = container.clientHeight;
+      const margin = { top: 40, right: 40, bottom: 60, left: 180 };
+      const chartW = width - margin.left - margin.right;
+      const chartH = height - margin.top - margin.bottom;
+
+      svg.innerHTML = '';
+      svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+
+      const items = [
+        { name: '姑苏区', value: gusuTonnes, color: '#A0522D' },
+        { name: '八座古典园林合计碳汇', value: gardenTonnes, color: '#5B8C5A' }
+      ];
+
+      const maxValue = gusuTonnes;
+      const barHeight = 46;
+      const gap = 52;
+      const totalH = items.length * barHeight + (items.length - 1) * gap;
+      const startY = (chartH - totalH) / 2;
+      const xScale = val => (val / maxValue) * chartW;
+
+      const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      g.setAttribute('transform', `translate(${margin.left}, ${margin.top})`);
+      svg.appendChild(g);
+
+      const ticks = [0, 500000, 1000000, 1500000, 2000000, 2500000];
+      ticks.forEach((tick, ti) => {
+        const x = xScale(tick);
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', x);
+        line.setAttribute('y1', 0);
+        line.setAttribute('x2', x);
+        line.setAttribute('y2', chartH);
+        line.setAttribute('class', 'grid-line');
+        line.style.animation = `fadeIn 0.35s ${0.05 + ti * 0.05}s var(--ease-out-quart) both`;
+        g.appendChild(line);
+
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.setAttribute('x', x);
+        text.setAttribute('y', chartH + 22);
+        text.setAttribute('text-anchor', 'middle');
+        text.setAttribute('class', 'zoom-axis-text');
+        text.style.animation = `fadeIn 0.35s ${0.05 + ti * 0.05}s var(--ease-out-quart) both`;
+        text.textContent = tick.toLocaleString('zh-CN');
+        g.appendChild(text);
+      });
+
+      const axisTitle = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      axisTitle.setAttribute('x', chartW);
+      axisTitle.setAttribute('y', chartH + 46);
+      axisTitle.setAttribute('text-anchor', 'end');
+      axisTitle.setAttribute('class', 'axis-title');
+      axisTitle.style.animation = `fadeIn 0.4s 0.35s var(--ease-out-quart) both`;
+      axisTitle.textContent = '单位：吨 CO₂ / 年';
+      g.appendChild(axisTitle);
+
+      items.forEach((item, i) => {
+        const y = startY + i * (barHeight + gap);
+        const barW = Math.max(2, xScale(item.value));
+
+        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        rect.setAttribute('x', 0);
+        rect.setAttribute('y', y);
+        rect.setAttribute('width', barW);
+        rect.setAttribute('height', barHeight);
+        rect.setAttribute('rx', 3);
+        rect.setAttribute('fill', item.color);
+        rect.style.animation = `barSlideIn 0.5s ${0.1 + i * 0.08}s var(--ease-out-expo) both`;
+        g.appendChild(rect);
+
+        const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        label.setAttribute('x', -12);
+        label.setAttribute('y', y + barHeight / 2 + 5);
+        label.setAttribute('text-anchor', 'end');
+        label.setAttribute('class', 'zoom-bar-label');
+        label.style.animation = `fadeIn 0.35s ${0.2 + i * 0.08}s var(--ease-out-quart) both`;
+        label.textContent = item.name;
+        g.appendChild(label);
+
+        const value = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        value.setAttribute('x', barW + 8);
+        value.setAttribute('y', y + barHeight / 2 + 5);
+        value.setAttribute('class', 'zoom-bar-value');
+        value.style.animation = `fadeIn 0.35s ${0.25 + i * 0.08}s var(--ease-out-quart) both`;
+        value.textContent = item.value.toLocaleString('zh-CN') + ' 吨';
+        g.appendChild(value);
+      });
+    }
+
+    window.addEventListener('resize', () => {
+      renderMainChart();
+      if (modal.classList.contains('active')) renderZoomChart();
+    });
+
+    renderMainChart();
+  </script>
+</body>
+</html>
