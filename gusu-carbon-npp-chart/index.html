@@ -7,13 +7,10 @@
 <style>
   :root {
     --bg: #F5F0E8;
-    --text: #2B2B2B;
-    --text-light: #6E6A63;
-    --grid: #D8D3CB;
-    --axis: #B8B3AB;
-    --carbon: #A95C32;
-    --npp: #3D5C44;
-    --tooltip-bg: rgba(43, 43, 43, 0.95);
+    --text: #1A1A1A;
+    --carbon: #8B4513;
+    --npp: #1E3A28;
+    --tooltip-bg: rgba(26, 26, 26, 0.95);
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body {
@@ -27,50 +24,55 @@
     overflow-x: hidden;
   }
   .title {
-    font-size: clamp(16px, 2.2vw, 20px); font-weight: 700; color: var(--text);
-    text-align: center; margin-bottom: 4px; letter-spacing: 0.3px;
+    font-size: clamp(18px, 2.5vw, 22px); font-weight: 700; color: var(--text);
+    text-align: center; margin-bottom: 8px; letter-spacing: 0.4px;
+    opacity: 0; transform: translateY(-8px);
+    animation: titleIn 0.7s 0.15s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
   }
-  .subtitle {
-    font-size: clamp(11px, 1.4vw, 12.5px); color: var(--text-light);
-    text-align: center; margin-bottom: 16px;
+  @keyframes titleIn {
+    to { opacity: 1; transform: translateY(0); }
   }
   .chart-wrap {
     position: relative; width: 100%; max-width: 1100px;
     flex: 1; min-height: 380px;
   }
   .legend-wrap {
-    display: flex; justify-content: center; gap: 32px; margin-top: 12px;
-    flex-shrink: 0;
+    display: flex; justify-content: center; gap: 36px; margin-top: 14px;
+    flex-shrink: 0; opacity: 0;
+    animation: legendIn 0.5s 1.5s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+  }
+  @keyframes legendIn {
+    to { opacity: 1; }
   }
   .legend-item {
-    display: flex; align-items: center; gap: 7px; font-size: clamp(10.5px, 1.3vw, 12px);
-    color: var(--text); user-select: none;
+    display: flex; align-items: center; gap: 8px; font-size: clamp(12px, 1.5vw, 13.5px);
+    font-weight: 500; color: var(--text); user-select: none;
   }
   .legend-dot {
-    width: 10px; height: 10px; border-radius: 50%;
-    border: 2px solid; background: var(--bg);
+    width: 12px; height: 12px; border-radius: 50%;
+    border: 2.5px solid; background: var(--bg);
   }
   .legend-dot.carbon { border-color: var(--carbon); }
   .legend-dot.npp { border-color: var(--npp); }
   .legend-square {
-    width: 10px; height: 10px;
-    border: 2px solid var(--npp); background: var(--bg);
+    width: 12px; height: 12px;
+    border: 2.5px solid var(--npp); background: var(--bg);
   }
   canvas { display: block; width: 100%; height: 100%; }
   .tooltip {
     position: absolute; pointer-events: none; opacity: 0;
     background: var(--tooltip-bg); color: #fff;
-    border-radius: 4px; padding: 9px 13px; font-size: 12px;
-    line-height: 1.55; white-space: nowrap;
+    border-radius: 5px; padding: 10px 14px; font-size: 13px;
+    line-height: 1.6; white-space: nowrap;
     transform: translate(-50%, -112%);
-    transition: opacity 0.12s;
+    transition: opacity 0.15s;
     z-index: 10; font-family: "Noto Serif SC", "Source Han Serif SC", serif;
   }
   .tooltip::after {
     content: ''; position: absolute; bottom: -5px; left: 50%;
     transform: translateX(-50%);
-    border-left: 5px solid transparent; border-right: 5px solid transparent;
-    border-top: 5px solid var(--tooltip-bg);
+    border-left: 6px solid transparent; border-right: 6px solid transparent;
+    border-top: 6px solid var(--tooltip-bg);
   }
   .tooltip.show { opacity: 1; }
 </style>
@@ -106,34 +108,32 @@ const nppData    = [1522,  1459,  1569,  1488,  1431];
 // ============================================================
 // 样式配置
 // ============================================================
-const FONT_SERIF = '14px "Noto Serif SC", "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", SimSun, serif';
-const FONT_AXIS  = '11.5px "Noto Serif SC", "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", SimSun, serif';
-const FONT_LABEL = '10.5px "Noto Serif SC", "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", SimSun, serif';
-const FONT_TITLE = 'bold 20px "Noto Serif SC", "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", SimSun, serif';
+const FONT_AXIS   = '13.5px "Noto Serif SC", "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", SimSun, serif';
+const FONT_LABEL  = '13px "Noto Serif SC", "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", SimSun, serif';
+const FONT_POINT  = 'bold 12.5px "Noto Serif SC", "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", SimSun, serif';
 
 const COLORS = {
-  carbon: '#A95C32',
-  carbonFill: 'rgba(169, 92, 50, 0.06)',
-  npp: '#3D5C44',
-  nppFill: 'rgba(61, 92, 68, 0.06)',
-  grid: '#D8D3CB',
-  axis: '#B8B3AB',
-  text: '#2B2B2B',
-  textLight: '#6E6A63'
+  carbon:     '#8B4513',
+  carbonFill: 'rgba(139, 69, 19, 0.1)',
+  carbonGlow: 'rgba(139, 69, 19, 0.18)',
+  npp:        '#1E3A28',
+  nppFill:    'rgba(30, 58, 40, 0.1)',
+  nppGlow:    'rgba(30, 58, 40, 0.18)',
+  grid:       '#C5BFB5',
+  axis:       '#8C8780',
+  text:       '#1A1A1A',
+  hoverLine:  '#5A5550'
 };
 
-// 坐标轴范围 — 与原图一致
 const carbonRange = { min: 30000, max: 36000, step: 1000 };
 const nppRange    = { min: 1000,  max: 2000,  step: 200  };
 
-// 绘图区域边距 — 响应式缩放
-const PAD_BASE = { top: 20, right: 88, bottom: 62, left: 76 };
+const PAD_BASE = { top: 24, right: 88, bottom: 66, left: 80 };
 
 let W, H, plotL, plotR, plotT, plotB, PAD;
 let ctx, canvas, wrap, tooltip;
 let hoverIdx = -1;
-let animProgress = 0;
-let animTarget = 1;
+let animStart = 0;
 
 // ============================================================
 // 初始化
@@ -146,7 +146,8 @@ window.onload = function() {
 
   resize();
   bindEvents();
-  startAnim();
+  animStart = performance.now();
+  requestAnimationFrame(animLoop);
 };
 
 function resize() {
@@ -160,7 +161,6 @@ function resize() {
   canvas.style.height = H + 'px';
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-  // 根据宽度缩放边距
   const scale = Math.min(1, W / 920);
   PAD = {
     top:    PAD_BASE.top    * scale,
@@ -168,7 +168,6 @@ function resize() {
     bottom: PAD_BASE.bottom * scale,
     left:   PAD_BASE.left   * scale
   };
-
   plotL = PAD.left;
   plotR = W - PAD.right;
   plotT = PAD.top;
@@ -179,9 +178,8 @@ function bindEvents() {
   let raf;
   window.addEventListener('resize', () => {
     cancelAnimationFrame(raf);
-    raf = requestAnimationFrame(() => { resize(); draw(); });
+    raf = requestAnimationFrame(() => { resize(); draw(1); });
   });
-
   canvas.addEventListener('mousemove', onMouseMove);
   canvas.addEventListener('mouseleave', onMouseLeave);
 }
@@ -189,87 +187,104 @@ function bindEvents() {
 // ============================================================
 // 坐标转换
 // ============================================================
-function xOf(i) {
-  return plotL + (i / (YEARS.length - 1)) * (plotR - plotL);
-}
-function yCarbon(v) {
-  return plotB - ((v - carbonRange.min) / (carbonRange.max - carbonRange.min)) * (plotB - plotT);
-}
-function yNpp(v) {
-  return plotB - ((v - nppRange.min) / (nppRange.max - nppRange.min)) * (plotB - plotT);
-}
+function xOf(i) { return plotL + (i / (YEARS.length - 1)) * (plotR - plotL); }
+function yCarbon(v) { return plotB - ((v - carbonRange.min) / (carbonRange.max - carbonRange.min)) * (plotB - plotT); }
+function yNpp(v) { return plotB - ((v - nppRange.min) / (nppRange.max - nppRange.min)) * (plotB - plotT); }
 
 // ============================================================
-// 动画
+// 缓动函数
 // ============================================================
 function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
-
-function startAnim() {
-  animProgress = 0;
-  function step() {
-    animProgress += (animTarget - animProgress) * 0.07;
-    if (animTarget - animProgress < 0.002) animProgress = animTarget;
-    draw();
-    if (animProgress < animTarget) requestAnimationFrame(step);
-  }
-  requestAnimationFrame(step);
+function easeOutBack(t) { const c1 = 1.70158; return 1 + (c1 + 1) * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2); }
+function easeOutElastic(t) {
+  if (t === 0 || t === 1) return t;
+  return Math.pow(2, -10 * t) * Math.sin((t - 1) * (2 * Math.PI) / 0.4) + 1;
 }
 
 // ============================================================
-// 绘图
+// 多阶段动画系统
 // ============================================================
-function draw() {
+// 阶段时间线 (ms)：
+//   0-400:    网格 + 轴线淡入
+//   300-900:  两条折线绘制
+//   700-1300: 数据点依次弹入
+//   1000-1400:数据标注依次淡入
+function animLoop(ts) {
+  const elapsed = ts - animStart;
+  const phase = Math.min(1, elapsed / 1500);
+
+  // 网格 & 轴线 alpha
+  const gridAlpha = Math.min(1, elapsed / 400);
+  // 折线进度
+  const lineProg = easeOutCubic(clamp((elapsed - 300) / 600, 0, 1));
+  // 数据点进度 (逐个)
+  const pointBase = clamp((elapsed - 700) / 600, 0, 1);
+  // 标注进度
+  const labelBase = clamp((elapsed - 1000) / 400, 0, 1);
+
+  draw(gridAlpha, lineProg, pointBase, labelBase);
+
+  if (phase < 1) {
+    requestAnimationFrame(animLoop);
+  } else {
+    // 动画完成后保持最终状态
+    draw(1, 1, 1, 1);
+  }
+}
+
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+// 无动画重绘（resize / hover 时）
+function draw(gridAlpha, lineProg, pointBase, labelBase) {
   ctx.clearRect(0, 0, W, H);
 
-  const prog = easeOutCubic(animProgress);
-
-  drawGrid();
-  drawAxes();
-  drawAxisLabels();
-  drawCarbonLine(prog);
-  drawNppLine(prog);
+  drawGrid(gridAlpha);
+  drawAxes(gridAlpha);
+  drawAxisLabels(gridAlpha);
+  drawCarbonLine(lineProg, pointBase, labelBase);
+  drawNppLine(lineProg, pointBase, labelBase);
   drawHover();
 }
 
-function drawGrid() {
+function drawGrid(alpha) {
+  ctx.globalAlpha = alpha;
   ctx.strokeStyle = COLORS.grid;
-  ctx.lineWidth = 0.6;
-  ctx.setLineDash([3, 3]);
+  ctx.lineWidth = 1.0;
+  ctx.setLineDash([4, 4]);
 
-  // 水平网格线
   for (let v = carbonRange.min; v <= carbonRange.max; v += carbonRange.step) {
     const y = yCarbon(v);
     ctx.beginPath(); ctx.moveTo(plotL, y); ctx.lineTo(plotR, y); ctx.stroke();
   }
-
-  // 垂直网格线
   for (let i = 0; i < YEARS.length; i++) {
     const x = xOf(i);
     ctx.beginPath(); ctx.moveTo(x, plotT); ctx.lineTo(x, plotB); ctx.stroke();
   }
-
   ctx.setLineDash([]);
+  ctx.globalAlpha = 1;
 }
 
-function drawAxes() {
+function drawAxes(alpha) {
+  ctx.globalAlpha = alpha;
   ctx.strokeStyle = COLORS.axis;
-  ctx.lineWidth = 0.8;
-
-  // 左、下、右三条轴
+  ctx.lineWidth = 1.5;
   ctx.beginPath();
   ctx.moveTo(plotL, plotT); ctx.lineTo(plotL, plotB);
   ctx.lineTo(plotR, plotB); ctx.lineTo(plotR, plotT);
   ctx.stroke();
+  ctx.globalAlpha = 1;
 }
 
-function drawAxisLabels() {
+function drawAxisLabels(alpha) {
+  ctx.globalAlpha = alpha;
+
   // 左轴碳排
   ctx.fillStyle = COLORS.carbon;
   ctx.font = FONT_AXIS;
   ctx.textAlign = 'right';
   ctx.textBaseline = 'middle';
   for (let v = carbonRange.min; v <= carbonRange.max; v += carbonRange.step) {
-    ctx.fillText(v.toLocaleString(), plotL - 8, yCarbon(v));
+    ctx.fillText(v.toLocaleString(), plotL - 10, yCarbon(v));
   }
 
   // 右轴NPP
@@ -285,18 +300,18 @@ function drawAxisLabels() {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
   for (let i = 0; i < YEARS.length; i++) {
-    ctx.fillText(YEARS[i], xOf(i), plotB + 9);
+    ctx.fillText(YEARS[i], xOf(i), plotB + 10);
   }
 
   // X轴标题
   ctx.font = FONT_LABEL;
   ctx.fillStyle = COLORS.text;
   ctx.textBaseline = 'top';
-  ctx.fillText('年份', plotL + (plotR - plotL) / 2, plotB + 34);
+  ctx.fillText('年份', plotL + (plotR - plotL) / 2, plotB + 36);
 
   // 左轴标题
   ctx.save();
-  ctx.translate(18, plotT + (plotB - plotT) / 2);
+  ctx.translate(12, plotT + (plotB - plotT) / 2);
   ctx.rotate(-Math.PI / 2);
   ctx.font = FONT_LABEL;
   ctx.textAlign = 'center';
@@ -307,7 +322,7 @@ function drawAxisLabels() {
 
   // 右轴标题
   ctx.save();
-  ctx.translate(plotR + 54, plotT + (plotB - plotT) / 2);
+  ctx.translate(plotR + 64, plotT + (plotB - plotT) / 2);
   ctx.rotate(-Math.PI / 2);
   ctx.font = FONT_LABEL;
   ctx.textAlign = 'center';
@@ -315,96 +330,142 @@ function drawAxisLabels() {
   ctx.fillStyle = COLORS.npp;
   ctx.fillText('NPP碳汇密度（tCO₂/km²/yr）', 0, 0);
   ctx.restore();
+
+  ctx.globalAlpha = 1;
 }
 
-function drawCarbonLine(prog) {
+function drawCarbonLine(lineProg, pointBase, labelBase) {
   const pts = YEARS.map((_, i) => ({ x: xOf(i), y: yCarbon(carbonData[i]) }));
 
   // 填充面积
   ctx.fillStyle = COLORS.carbonFill;
   ctx.beginPath();
   ctx.moveTo(pts[0].x, plotB);
-  for (let i = 0; i < pts.length; i++) {
-    const px = pts[0].x + (pts[i].x - pts[0].x) * prog;
-    ctx.lineTo(px, pts[i].y);
+  const lastI = Math.min(YEARS.length - 1, Math.floor(lineProg * (YEARS.length - 1)) + 1);
+  for (let i = 0; i < YEARS.length; i++) {
+    if (i > lastI) break;
+    const segProg = clamp((lineProg * (YEARS.length - 1) - (i - 1)), 0, 1);
+    const px = i === 0 ? pts[0].x : pts[i - 1].x + (pts[i].x - pts[i - 1].x) * segProg;
+    const py = i === 0 ? pts[0].y : pts[i - 1].y + (pts[i].y - pts[i - 1].y) * segProg;
+    ctx.lineTo(px, py);
   }
-  const lastX = pts[0].x + (pts[pts.length - 1].x - pts[0].x) * prog;
-  ctx.lineTo(lastX, plotB);
+  const endX = pts[0].x + (pts[pts.length - 1].x - pts[0].x) * lineProg;
+  ctx.lineTo(endX, plotB);
   ctx.closePath();
   ctx.fill();
 
   // 折线
   ctx.strokeStyle = COLORS.carbon;
-  ctx.lineWidth = 2.4;
+  ctx.lineWidth = 3.6;
   ctx.lineJoin = 'round';
   ctx.lineCap = 'round';
   ctx.beginPath();
-  for (let i = 0; i < pts.length; i++) {
-    const px = pts[0].x + (pts[i].x - pts[0].x) * prog;
-    if (i === 0) ctx.moveTo(px, pts[i].y);
-    else ctx.lineTo(px, pts[i].y);
+  for (let i = 0; i < YEARS.length; i++) {
+    if (i > lastI) break;
+    const segProg = clamp((lineProg * (YEARS.length - 1) - (i - 1)), 0, 1);
+    const px = i === 0 ? pts[0].x : pts[i - 1].x + (pts[i].x - pts[i - 1].x) * segProg;
+    const py = i === 0 ? pts[0].y : pts[i - 1].y + (pts[i].y - pts[i - 1].y) * segProg;
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
   }
   ctx.stroke();
 
-  // 数据点 + 标注
-  for (let i = 0; i < pts.length; i++) {
-    const px = pts[0].x + (pts[i].x - pts[0].x) * prog;
-    drawHollowCircle(px, pts[i].y, COLORS.carbon, i === hoverIdx ? 6.5 : 5);
+  // 数据点 + 标注（逐个弹入）
+  for (let i = 0; i < YEARS.length; i++) {
+    const px = pts[i].x;
+    const py = pts[i].y;
+    const pi = clamp((pointBase * YEARS.length - i) * 2, 0, 1);
+    if (pi <= 0) continue;
 
-    // 数值在点上方
-    ctx.fillStyle = COLORS.carbon;
-    ctx.font = 'bold 10px "Noto Serif SC", "Source Han Serif SC", serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'bottom';
-    ctx.fillText(carbonData[i].toLocaleString(), px, pts[i].y - 10);
+    const scale = easeOutBack(pi);
+    const alpha = easeOutCubic(pi);
+    const sr = (i === hoverIdx ? 8.5 : 7) * scale;
+
+    ctx.globalAlpha = alpha;
+    drawHollowCircle(px, py, COLORS.carbon, sr);
+
+    // 标注
+    const li = clamp((labelBase * YEARS.length - i) * 2.5, 0, 1);
+    if (li > 0) {
+      ctx.globalAlpha = easeOutCubic(li);
+      ctx.fillStyle = COLORS.carbon;
+      ctx.font = FONT_POINT;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText(carbonData[i].toLocaleString(), px, py - 12);
+    }
   }
+  ctx.globalAlpha = 1;
 }
 
-function drawNppLine(prog) {
+function drawNppLine(lineProg, pointBase, labelBase) {
   const pts = YEARS.map((_, i) => ({ x: xOf(i), y: yNpp(nppData[i]) }));
 
   // 填充面积
   ctx.fillStyle = COLORS.nppFill;
   ctx.beginPath();
   ctx.moveTo(pts[0].x, plotB);
-  for (let i = 0; i < pts.length; i++) {
-    const px = pts[0].x + (pts[i].x - pts[0].x) * prog;
-    ctx.lineTo(px, pts[i].y);
+  const lastI = Math.min(YEARS.length - 1, Math.floor(lineProg * (YEARS.length - 1)) + 1);
+  for (let i = 0; i < YEARS.length; i++) {
+    if (i > lastI) break;
+    const segProg = clamp((lineProg * (YEARS.length - 1) - (i - 1)), 0, 1);
+    const px = i === 0 ? pts[0].x : pts[i - 1].x + (pts[i].x - pts[i - 1].x) * segProg;
+    const py = i === 0 ? pts[0].y : pts[i - 1].y + (pts[i].y - pts[i - 1].y) * segProg;
+    ctx.lineTo(px, py);
   }
-  const lastX = pts[0].x + (pts[pts.length - 1].x - pts[0].x) * prog;
-  ctx.lineTo(lastX, plotB);
+  const endX = pts[0].x + (pts[pts.length - 1].x - pts[0].x) * lineProg;
+  ctx.lineTo(endX, plotB);
   ctx.closePath();
   ctx.fill();
 
   // 折线
   ctx.strokeStyle = COLORS.npp;
-  ctx.lineWidth = 2.4;
+  ctx.lineWidth = 3.6;
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
   ctx.beginPath();
-  for (let i = 0; i < pts.length; i++) {
-    const px = pts[0].x + (pts[i].x - pts[0].x) * prog;
-    if (i === 0) ctx.moveTo(px, pts[i].y);
-    else ctx.lineTo(px, pts[i].y);
+  for (let i = 0; i < YEARS.length; i++) {
+    if (i > lastI) break;
+    const segProg = clamp((lineProg * (YEARS.length - 1) - (i - 1)), 0, 1);
+    const px = i === 0 ? pts[0].x : pts[i - 1].x + (pts[i].x - pts[i - 1].x) * segProg;
+    const py = i === 0 ? pts[0].y : pts[i - 1].y + (pts[i].y - pts[i - 1].y) * segProg;
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
   }
   ctx.stroke();
 
   // 数据点 + 标注
-  for (let i = 0; i < pts.length; i++) {
-    const px = pts[0].x + (pts[i].x - pts[0].x) * prog;
-    drawHollowSquare(px, pts[i].y, COLORS.npp, i === hoverIdx ? 6.5 : 5);
+  for (let i = 0; i < YEARS.length; i++) {
+    const px = pts[i].x;
+    const py = pts[i].y;
+    const pi = clamp((pointBase * YEARS.length - i) * 2, 0, 1);
+    if (pi <= 0) continue;
 
-    ctx.fillStyle = COLORS.npp;
-    ctx.font = 'bold 10px "Noto Serif SC", "Source Han Serif SC", serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'bottom';
-    ctx.fillText(nppData[i].toString(), px, pts[i].y - 10);
+    const scale = easeOutBack(pi);
+    const alpha = easeOutCubic(pi);
+    const ss = (i === hoverIdx ? 8.5 : 7) * scale;
+
+    ctx.globalAlpha = alpha;
+    drawHollowSquare(px, py, COLORS.npp, ss);
+
+    const li = clamp((labelBase * YEARS.length - i) * 2.5, 0, 1);
+    if (li > 0) {
+      ctx.globalAlpha = easeOutCubic(li);
+      ctx.fillStyle = COLORS.npp;
+      ctx.font = FONT_POINT;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText(nppData[i].toString(), px, py - 12);
+    }
   }
+  ctx.globalAlpha = 1;
 }
 
 function drawHollowCircle(cx, cy, color, r) {
   ctx.fillStyle = '#F5F0E8';
   ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
   ctx.strokeStyle = color;
-  ctx.lineWidth = 2.0;
+  ctx.lineWidth = 3.0;
   ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
 }
 
@@ -413,7 +474,7 @@ function drawHollowSquare(cx, cy, color, size) {
   ctx.fillStyle = '#F5F0E8';
   ctx.fillRect(cx - size, cy - size, s, s);
   ctx.strokeStyle = color;
-  ctx.lineWidth = 2.0;
+  ctx.lineWidth = 3.0;
   ctx.strokeRect(cx - size, cy - size, s, s);
 }
 
@@ -422,21 +483,24 @@ function drawHover() {
   const x = xOf(hoverIdx);
 
   // 垂直虚线
-  ctx.strokeStyle = '#999';
-  ctx.lineWidth = 0.7;
-  ctx.setLineDash([4, 4]);
+  ctx.strokeStyle = COLORS.hoverLine;
+  ctx.lineWidth = 0.8;
+  ctx.setLineDash([5, 4]);
   ctx.beginPath(); ctx.moveTo(x, plotT); ctx.lineTo(x, plotB); ctx.stroke();
   ctx.setLineDash([]);
 
-  // 高亮光晕
+  // 光晕
   const cx = xOf(hoverIdx);
   drawHalo(cx, yCarbon(carbonData[hoverIdx]), COLORS.carbon);
   drawHalo(cx, yNpp(nppData[hoverIdx]), COLORS.npp);
 }
 
 function drawHalo(cx, cy, color) {
-  ctx.fillStyle = color + '22';
-  ctx.beginPath(); ctx.arc(cx, cy, 14, 0, Math.PI * 2); ctx.fill();
+  const grad = ctx.createRadialGradient(cx, cy, 4, cx, cy, 18);
+  grad.addColorStop(0, color + '44');
+  grad.addColorStop(1, color + '00');
+  ctx.fillStyle = grad;
+  ctx.beginPath(); ctx.arc(cx, cy, 18, 0, Math.PI * 2); ctx.fill();
 }
 
 // ============================================================
@@ -448,7 +512,7 @@ function onMouseMove(e) {
   const my = e.clientY - rect.top;
 
   let found = -1;
-  let minDist = 60;
+  let minDist = 70;
   for (let i = 0; i < YEARS.length; i++) {
     const x = xOf(i);
     const yc = yCarbon(carbonData[i]);
@@ -468,8 +532,7 @@ function onMouseMove(e) {
         '<span style="color:#88D088">■ NPP碳汇密度：' + nppData[found] + ' tCO₂/km²/yr</span>';
       tooltip.classList.add('show');
       let tx = xOf(found);
-      let ty = Math.min(yCarbon(carbonData[found]), yNpp(nppData[found])) - 12;
-      // 边界修正
+      let ty = Math.min(yCarbon(carbonData[found]), yNpp(nppData[found])) - 14;
       const tw = tooltip.offsetWidth || 200;
       if (tx < tw / 2 + 10) tx = tw / 2 + 10;
       if (tx > W - tw / 2 - 10) tx = W - tw / 2 - 10;
@@ -479,14 +542,14 @@ function onMouseMove(e) {
     } else {
       tooltip.classList.remove('show');
     }
-    draw();
+    draw(1, 1, 1, 1);
   }
 }
 
 function onMouseLeave() {
   hoverIdx = -1;
   tooltip.classList.remove('show');
-  draw();
+  draw(1, 1, 1, 1);
 }
 </script>
 </body>
