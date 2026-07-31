@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -41,11 +41,12 @@ body {
 .figure-header {
   margin-bottom: 0.45rem;
   flex-shrink: 0;
+  text-align: center;
 }
 
 .figure-title {
   font-family: 'Noto Serif SC', serif;
-  font-size: 1.42rem;
+  font-size: 1.8rem;
   font-weight: 700;
   color: var(--ink);
   line-height: 1.45;
@@ -56,7 +57,6 @@ body {
   font-family: 'Noto Serif SC', serif;
   font-size: 0.90rem;
   color: var(--muted);
-  font-style: italic;
   margin-top: 0.2rem;
 }
 
@@ -81,12 +81,12 @@ body {
 
 @media (max-width: 768px) {
   .figure-container { padding: 1.2rem 1.4rem 1rem; }
-  .figure-title { font-size: 1.05rem; }
+  .figure-title { font-size: 1.4rem; }
 }
 
 @media (max-width: 480px) {
   .figure-container { padding: 0.9rem 1rem 0.8rem; }
-  .figure-title { font-size: 0.95rem; }
+  .figure-title { font-size: 1.1rem; }
   .figure-note { font-size: 0.72rem; }
 }
 </style>
@@ -97,7 +97,7 @@ body {
 
   <div class="figure-header">
     <div class="figure-title">八大古典园林避免排放贡献排名</div>
-    <div class="figure-note">单位：kg CO₂ / 年；留园以4,451 kg居首，占总避免排放的30.5%</div>
+    <div class="figure-note">合计避免排放：14,611 kg CO₂ / 年</div>
   </div>
 
   <div class="chart-stage">
@@ -105,7 +105,7 @@ body {
   </div>
 
   <div class="figure-footer">
-    <div class="figure-note">合计避免排放：14,611 kg CO₂ / 年</div>
+    <div class="figure-note">单位：kg CO₂ / 年；留园以4,451 kg居首，占总避免排放的30.5%</div>
   </div>
 
 </div>
@@ -171,7 +171,7 @@ const option = {
     data: data.map(d => d.name),
     axisLabel: {
       color: '#2A241E',
-      fontSize: 14,
+      fontSize: 13,
       fontWeight: 600,
       fontFamily: commonFont,
       formatter: function(v) {
@@ -179,7 +179,7 @@ const option = {
         return v;
       },
       rich: {
-        highlight: { color: '#2D5A27', fontWeight: 700, fontSize: 15 }
+        highlight: { color: '#2D5A27', fontWeight: 700, fontSize: 14 }
       }
     },
     axisLine: { lineStyle: { color: '#C8C2B8', width: 0.8 } },
