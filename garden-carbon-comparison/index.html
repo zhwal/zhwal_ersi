@@ -649,7 +649,7 @@
       const svg = document.getElementById('zoom-svg');
       const width = container.clientWidth;
       const height = container.clientHeight;
-      const margin = { top: 40, right: 40, bottom: 60, left: 180 };
+      const margin = { top: 40, right: 200, bottom: 74, left: 180 };
       const chartW = width - margin.left - margin.right;
       const chartH = height - margin.top - margin.bottom;
 
@@ -696,7 +696,7 @@
 
       const axisTitle = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       axisTitle.setAttribute('x', chartW);
-      axisTitle.setAttribute('y', chartH + 46);
+      axisTitle.setAttribute('y', chartH + 56);
       axisTitle.setAttribute('text-anchor', 'end');
       axisTitle.setAttribute('class', 'axis-title');
       axisTitle.style.animation = `fadeIn 0.4s 0.35s var(--ease-out-quart) both`;
