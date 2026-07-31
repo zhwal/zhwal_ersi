@@ -28,8 +28,8 @@
       background: var(--rice-paper);
       color: var(--ink);
       line-height: 1.75;
-      min-height: 100vh;
-      padding: 2.5rem 2rem 4rem;
+      padding: 0.8rem 1.5rem 0.5rem;
+      margin: 0;
     }
 
     .container {
@@ -39,28 +39,19 @@
 
     header {
       text-align: center;
-      margin-bottom: 2rem;
+      margin-bottom: 0.5rem;
       animation: fadeInDown 0.7s var(--ease-out-expo) both;
     }
 
     h1 {
       font-family: 'Songti SC', 'SimSun', 'Noto Serif SC', serif;
-      font-size: 1.8rem;
+      font-size: 1.5rem;
       font-weight: 700;
       color: var(--moss-dark);
       letter-spacing: 0.02em;
-      margin-bottom: 0.4rem;
+      margin-bottom: 0;
     }
 
-    .subtitle {
-      font-size: 0.9rem;
-      color: var(--stone);
-      max-width: 640px;
-      margin: 0 auto;
-      animation: fadeInDown 0.7s 0.12s var(--ease-out-expo) both;
-    }
-
-    /* ===== Keyframes ===== */
     @keyframes fadeInDown {
       from { opacity: 0; transform: translateY(-10px); }
       to   { opacity: 1; transform: translateY(0); }
@@ -98,9 +89,9 @@
       display: flex;
       justify-content: flex-end;
       gap: 1.5rem;
-      margin-bottom: 0.8rem;
+      margin-bottom: 0.2rem;
       padding-right: 100px;
-      font-size: 0.82rem;
+      font-size: 0.8rem;
       color: var(--ink-light);
       font-family: 'Songti SC', 'SimSun', 'Noto Serif SC', serif;
       animation: fadeIn 0.5s 0.25s var(--ease-out-expo) both;
@@ -123,7 +114,7 @@
 
     #main-chart {
       width: 100%;
-      height: 540px;
+      height: 460px;
       position: relative;
       user-select: none;
       overflow: visible;
@@ -390,10 +381,10 @@
     }
 
     @media (max-width: 640px) {
-      body { padding: 1.5rem 1rem 3rem; }
-      h1 { font-size: 1.4rem; }
-      #main-chart { height: 480px; }
-      .legend { justify-content: flex-start; flex-direction: column; gap: 0.3rem; }
+      body { padding: 0.5rem 0.8rem 0.3rem; }
+      h1 { font-size: 1.2rem; }
+      #main-chart { height: 400px; }
+      .legend { justify-content: flex-start; flex-direction: column; gap: 0.3rem; padding-right: 0; }
       .modal-card { padding: 1.5rem 1rem; }
     }
   </style>
@@ -402,7 +393,6 @@
   <div class="container">
     <header>
       <h1>苏州古典园林碳汇与区县碳排放对比</h1>
-      <p class="subtitle">八座世界遗产古典园林合计年碳汇 161.03 吨 CO₂，在区县百万吨级年碳排尺度上几乎不可见。</p>
     </header>
 
     <div class="chart-area">
@@ -460,7 +450,7 @@
       const svg = document.getElementById('main-svg');
       const width = container.clientWidth;
       const height = container.clientHeight;
-      const margin = { top: 20, right: 100, bottom: 52, left: 170 };
+      const margin = { top: 8, right: 80, bottom: 38, left: 170 };
       const chartW = width - margin.left - margin.right;
       const chartH = height - margin.top - margin.bottom;
 
@@ -493,7 +483,7 @@
 
         const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         text.setAttribute('x', x);
-        text.setAttribute('y', chartH + 22);
+        text.setAttribute('y', chartH + 16);
         text.setAttribute('text-anchor', 'middle');
         text.setAttribute('class', 'axis-text');
         text.style.animation = `fadeIn 0.4s ${0.1 + ti * 0.06}s var(--ease-out-quart) both`;
@@ -504,7 +494,7 @@
       // Unit label (italic, bottom-right)
       const unitLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       unitLabel.setAttribute('x', chartW);
-      unitLabel.setAttribute('y', chartH + 44);
+      unitLabel.setAttribute('y', chartH + 32);
       unitLabel.setAttribute('text-anchor', 'end');
       unitLabel.setAttribute('class', 'axis-title');
       unitLabel.style.animation = `fadeIn 0.5s 0.6s var(--ease-out-quart) both`;
