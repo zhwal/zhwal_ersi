@@ -4,10 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>双面苏州 · 工业总产值对比</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<script src="https://cdn.bootcdn.net/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
 <style>
 :root {
   --bg: #F5F0E8;
@@ -27,7 +24,7 @@ html, body {
 }
 
 body {
-  font-family: 'Noto Serif SC', 'Noto Serif CJK SC', 'Songti SC', 'SimSun', serif;
+  font-family: 'Noto Serif SC', 'Source Han Serif SC', 'Songti SC', 'SimSun', serif;
   background: var(--bg);
   color: var(--ink);
 }
@@ -252,7 +249,7 @@ const blueGradient = new echarts.graphic.LinearGradient(0, 0, 1, 0, [
   { offset: 1, color: '#5B8FB9' }
 ]);
 
-const commonFont = "'Noto Serif SC','Noto Serif CJK SC','Songti SC','SimSun',serif";
+const commonFont = "'Noto Serif SC','Source Han Serif SC','Songti SC','SimSun',serif";
 
 // ===== FRONT Chart =====
 const frontChart = echarts.init(document.getElementById('chartFront'));
