@@ -28,7 +28,7 @@
       background: var(--rice-paper);
       color: var(--ink);
       line-height: 1.75;
-      padding: 0.8rem 1.5rem 0.5rem;
+      padding: 0.25rem 1rem 0.1rem;
       margin: 0;
     }
 
@@ -39,17 +39,18 @@
 
     header {
       text-align: center;
-      margin-bottom: 0.5rem;
+      margin-bottom: 0.1rem;
       animation: fadeInDown 0.7s var(--ease-out-expo) both;
     }
 
     h1 {
       font-family: 'Songti SC', 'SimSun', 'Noto Serif SC', serif;
-      font-size: 1.5rem;
+      font-size: 1.2rem;
       font-weight: 700;
       color: var(--moss-dark);
       letter-spacing: 0.02em;
       margin-bottom: 0;
+      line-height: 1.3;
     }
 
     @keyframes fadeInDown {
@@ -88,24 +89,25 @@
     .legend {
       display: flex;
       justify-content: flex-end;
-      gap: 1.5rem;
-      margin-bottom: 0.2rem;
-      padding-right: 100px;
-      font-size: 0.8rem;
+      gap: 0.8rem;
+      margin-bottom: 0;
+      padding-right: 70px;
+      font-size: 0.72rem;
       color: var(--ink-light);
       font-family: 'Songti SC', 'SimSun', 'Noto Serif SC', serif;
       animation: fadeIn 0.5s 0.25s var(--ease-out-expo) both;
+      line-height: 1.2;
     }
 
     .legend-item {
       display: flex;
       align-items: center;
-      gap: 0.4rem;
+      gap: 0.3rem;
     }
 
     .legend-dot {
-      width: 13px;
-      height: 13px;
+      width: 10px;
+      height: 10px;
       border-radius: 2px;
     }
 
@@ -114,7 +116,7 @@
 
     #main-chart {
       width: 100%;
-      height: 460px;
+      height: 380px;
       position: relative;
       user-select: none;
       overflow: visible;
@@ -381,10 +383,10 @@
     }
 
     @media (max-width: 640px) {
-      body { padding: 0.5rem 0.8rem 0.3rem; }
-      h1 { font-size: 1.2rem; }
-      #main-chart { height: 400px; }
-      .legend { justify-content: flex-start; flex-direction: column; gap: 0.3rem; padding-right: 0; }
+      body { padding: 0.2rem 0.5rem 0.1rem; }
+      h1 { font-size: 1rem; }
+      #main-chart { height: 340px; }
+      .legend { justify-content: flex-start; flex-direction: column; gap: 0.2rem; padding-right: 0; }
       .modal-card { padding: 1.5rem 1rem; }
     }
   </style>
@@ -450,7 +452,7 @@
       const svg = document.getElementById('main-svg');
       const width = container.clientWidth;
       const height = container.clientHeight;
-      const margin = { top: 8, right: 80, bottom: 38, left: 170 };
+      const margin = { top: 2, right: 70, bottom: 24, left: 155 };
       const chartW = width - margin.left - margin.right;
       const chartH = height - margin.top - margin.bottom;
 
@@ -460,8 +462,8 @@
       const maxValue = 10000;
       const allItems = [...districts, garden];
       const n = allItems.length;
-      const barHeight = Math.min(38, chartH / n * 0.55);
-      const gap = chartH / n * 0.45;
+      const barHeight = Math.min(30, chartH / n * 0.58);
+      const gap = chartH / n * 0.42;
       const xScale = val => (val / maxValue) * chartW;
 
       const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
@@ -483,7 +485,7 @@
 
         const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         text.setAttribute('x', x);
-        text.setAttribute('y', chartH + 16);
+        text.setAttribute('y', chartH + 14);
         text.setAttribute('text-anchor', 'middle');
         text.setAttribute('class', 'axis-text');
         text.style.animation = `fadeIn 0.4s ${0.1 + ti * 0.06}s var(--ease-out-quart) both`;
@@ -494,7 +496,7 @@
       // Unit label (italic, bottom-right)
       const unitLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       unitLabel.setAttribute('x', chartW);
-      unitLabel.setAttribute('y', chartH + 32);
+      unitLabel.setAttribute('y', chartH + 28);
       unitLabel.setAttribute('text-anchor', 'end');
       unitLabel.setAttribute('class', 'axis-title');
       unitLabel.style.animation = `fadeIn 0.5s 0.6s var(--ease-out-quart) both`;
