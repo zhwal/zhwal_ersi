@@ -817,17 +817,9 @@
         }
       }, 15000);
 
-      // Load contour data (isotherm lines)
+      // Load contour data (isotherm lines) - 坐标已在WGS84
       loadJSON(dataBasePath + 'lst_contours_2degC.json', function(err, data) {
         if (!err && data) {
-          // GCJ-02 → WGS84 坐标转换
-          data.features.forEach(function(f) {
-            var coords = f.geometry.coordinates;
-            for (var i = 0; i < coords.length; i++) {
-              coords[i][0] -= 0.00424;
-              coords[i][1] += 0.00209;
-            }
-          });
           sourceData.contours = data;
           if (!map.getSource('contours')) {
             addGeoJSONSource('contours', data);
@@ -841,23 +833,25 @@
               paint: {
                 'line-color': [
                   'interpolate', ['linear'], ['get', 't'],
-                  34, 'rgba(83,128,181,0.8)',
-                  38, 'rgba(120,160,190,0.7)',
-                  42, 'rgba(200,180,100,0.7)',
-                  46, 'rgba(220,150,60,0.7)',
-                  50, 'rgba(215,80,50,0.7)',
-                  54, 'rgba(215,54,44,0.8)'
+                  32, 'rgba(83,128,181,0.85)',
+                  36, 'rgba(120,168,195,0.80)',
+                  40, 'rgba(180,190,140,0.75)',
+                  44, 'rgba(230,195,90,0.75)',
+                  48, 'rgba(225,130,55,0.75)',
+                  52, 'rgba(215,65,42,0.80)',
+                  56, 'rgba(195,40,35,0.85)'
                 ],
                 'line-width': [
                   'interpolate', ['linear'], ['get', 't'],
-                  34, 1.2,
-                  38, 1.0,
-                  42, 0.8,
-                  46, 0.6,
-                  50, 0.4,
-                  54, 0.3
+                  32, 1.8,
+                  36, 1.5,
+                  40, 1.2,
+                  44, 1.0,
+                  48, 0.8,
+                  52, 0.6,
+                  56, 0.5
                 ],
-                'line-opacity': 0.55
+                'line-opacity': 0.75
               }
             });
           }
@@ -890,17 +884,12 @@
         }
       }, 25000);
 
-      // Load road network (slow travel)
+      // Load road network (slow travel) - 坐标已在WGS84
       loadJSON(dataBasePath + 'suzhou_roads_gusu.json', function(err, data) {
         if (!err && data) {
-          // GCJ-02 → WGS84 坐标转换
           data.features.forEach(function(f, i) {
             f.properties.index = i;
             var coords = f.geometry.coordinates;
-            for (var j = 0; j < coords.length; j++) {
-              coords[j][0] -= 0.00424;
-              coords[j][1] += 0.00209;
-            }
             var mid = coords[Math.floor(coords.length / 2)];
             f.properties.mid_lon = mid[0];
             f.properties.mid_lat = mid[1];
@@ -924,22 +913,15 @@
 
   function addImageSource(name, url, bounds) {
     if (!map.getSource(name)) {
-      // GCJ-02 → WGS84 坐标转换（天地图底图使用CGCS2000≈WGS84）
-      // 苏州地区偏移：Δlng≈0.00424°(≈402m西), Δlat≈-0.00209°(≈232m北)
-      var lngAdj = 0.00424;
-      var latAdj = -0.00209;
-      var swLng = bounds.southWest[0] - lngAdj;
-      var neLng = bounds.northEast[0] - lngAdj;
-      var swLat = bounds.southWest[1] - latAdj;
-      var neLat = bounds.northEast[1] - latAdj;
+      // 坐标已在WGS84（从EPSG:4549转换），无需GCJ-02偏移修正
       map.addSource(name, {
         type: 'image',
         url: url,
         coordinates: [
-          [swLng, neLat],
-          [neLng, neLat],
-          [neLng, swLat],
-          [swLng, swLat]
+          [bounds.southWest[0], bounds.northEast[1]],
+          [bounds.northEast[0], bounds.northEast[1]],
+          [bounds.northEast[0], bounds.southWest[1]],
+          [bounds.southWest[0], bounds.southWest[1]]
         ]
       });
     }
@@ -978,17 +960,7 @@
       paint: { 'line-color': '#8B6E5A', 'line-width': 2.5, 'line-dasharray': [4, 3], 'line-opacity': 0.8 }
     });
 
-    // Gardens
-    // GCJ-02 → WGS84 坐标转换
-    sourceData.gardens.features.forEach(function(f) {
-      var coords = f.geometry.coordinates[0];
-      for (var i = 0; i < coords.length; i++) {
-        coords[i][0] -= 0.00424;
-        coords[i][1] += 0.00209;
-      }
-      if (f.properties.lon !== undefined) f.properties.lon -= 0.00424;
-      if (f.properties.lat !== undefined) f.properties.lat += 0.00209;
-    });
+    // Gardens - 坐标已在WGS84，无需转换（天地图底图使用CGCS2000≈WGS84）
     state.gardens = sourceData.gardens.features.map(function(f) {
       return {
         name: f.properties.name,
@@ -1064,12 +1036,14 @@
       paint: {
         'fill-extrusion-color': [
           'interpolate', ['linear'], ['get', 'height'],
-          5, '#1F2E1A',
-          15, '#4A6741',
-          30, '#8B6E5A',
-          60, '#A08060'
+          5, '#F5F0E8',
+          12, '#D4CFC4',
+          24, '#C4A882',
+          36, '#8B6E5A',
+          50, '#5A4A3A',
+          70, '#3A2E24'
         ],
-        'fill-extrusion-height': ['*', ['max', ['get', 'height'], 12], 2.0],
+        'fill-extrusion-height': ['*', ['get', 'height'], ['*', ['case', ['has', 'spatialFactor'], ['sqrt', ['get', 'spatialFactor']], 1.0], 2.0]],
         'fill-extrusion-base': 0,
         'fill-extrusion-opacity': 0.85,
         'fill-extrusion-vertical-gradient': true
@@ -1086,10 +1060,12 @@
       paint: {
         'fill-extrusion-color': [
           'interpolate', ['linear'], ['get', 'height'],
-          5, '#D4CFC4',
-          15, '#B8B2A8',
-          30, '#9A958C',
-          60, '#8A8070'
+          5, '#F5F0E8',
+          12, '#D4CFC4',
+          24, '#C4A882',
+          36, '#8B6E5A',
+          50, '#5A4A3A',
+          70, '#3A2E24'
         ],
         'fill-extrusion-height': ['*', ['get', 'height'], 2.0],
         'fill-extrusion-base': 0,
@@ -1159,23 +1135,25 @@
         paint: {
           'line-color': [
             'interpolate', ['linear'], ['get', 't'],
-            34, 'rgba(83,128,181,0.8)',
-            38, 'rgba(120,160,190,0.7)',
-            42, 'rgba(200,180,100,0.7)',
-            46, 'rgba(220,150,60,0.7)',
-            50, 'rgba(215,80,50,0.7)',
-            54, 'rgba(215,54,44,0.8)'
+            32, 'rgba(83,128,181,0.85)',
+            36, 'rgba(120,168,195,0.80)',
+            40, 'rgba(180,190,140,0.75)',
+            44, 'rgba(230,195,90,0.75)',
+            48, 'rgba(225,130,55,0.75)',
+            52, 'rgba(215,65,42,0.80)',
+            56, 'rgba(195,40,35,0.85)'
           ],
           'line-width': [
             'interpolate', ['linear'], ['get', 't'],
-            34, 1.2,
-            38, 1.0,
-            42, 0.8,
-            46, 0.6,
-            50, 0.4,
-            54, 0.3
+            32, 1.8,
+            36, 1.5,
+            40, 1.2,
+            44, 1.0,
+            48, 0.8,
+            52, 0.6,
+            56, 0.5
           ],
-          'line-opacity': 0.55
+          'line-opacity': 0.75
         }
       });
     }
@@ -1282,12 +1260,13 @@
     map.setPaintProperty('temperature-contours', 'line-width', [
       '*',
       ['interpolate', ['linear'], ['get', 't'],
-        34, 1.2,
-        38, 1.0,
-        42, 0.8,
-        46, 0.6,
-        50, 0.4,
-        54, 0.3
+        32, 1.8,
+        36, 1.5,
+        40, 1.2,
+        44, 1.0,
+        48, 0.8,
+        52, 0.6,
+        56, 0.5
       ],
       lineWidthMultiplier
     ]);
@@ -1297,20 +1276,12 @@
 
   function updateBuildings() {
     if (!map.getLayer('buildings-3d-inner')) return;
-    var h = state.height;
-    // 多中心引力模型（削弱版）：有效限高 = 滑块值 × spatialFactor^0.5
-    // spatialFactor 已预计算（建筑越靠近古城核心节点，因子越接近1.0）
-    // 取平方根削弱空间差异，让核心区与边缘区高度差异减小
-    // 古城内建筑响应滑块，古城外建筑保持原始高度
-    // 建筑高度 = max(原始高度, 约束值×√spatialFactor) × 2.0倍视觉增强
-    // 如果数据缺少spatialFactor字段，降级为直接使用滑块值
+    // 古城内建筑：高度 × spatialFactor^0.5 × 2.0（空间因子削弱版，核心区略高，边缘区略低）
+    // 古城外建筑：高度 × 2.0（纯视觉增强，无空间差异）
+    // 移除原来的 max(height, h×spatialFactor) 逻辑，避免放大矮建筑
     map.setPaintProperty('buildings-3d-inner', 'fill-extrusion-height', [
-      '*',
-      ['max', ['get', 'height'], ['*', h, ['case', ['has', 'spatialFactor'], ['sqrt', ['get', 'spatialFactor']], 1.0]]],
-      2.0
+      '*', ['get', 'height'], ['*', ['case', ['has', 'spatialFactor'], ['sqrt', ['get', 'spatialFactor']], 1.0], 2.0]
     ]);
-    map.setPaintProperty('buildings-3d-inner', 'fill-extrusion-opacity', h <= 24 ? 0.85 : 0.92);
-    // 古城外建筑也加适度增强，保持视觉一致性
     map.setPaintProperty('buildings-3d-outer', 'fill-extrusion-height', [
       '*', ['get', 'height'], 2.0
     ]);
