@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>八大古典园林避免排放贡献排名</title>
+<script src="echarts.min.js"></script>
+<style>
+:root {
+  --bg: #F5F0E8;
+  --ink: #2A241E;
+  --muted: #6B655D;
+  --rule: #D8D0C0;
+  --moss-dark: #2D5A27;
+  --moss: #4A7C42;
+  --moss-light: #6BA368;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: 'Noto Serif SC', 'Source Han Serif SC', 'Songti SC', 'SimSun', serif;
+  background: var(--bg);
+  color: var(--ink);
+}
+
+.figure-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 1.1rem 1.5rem 0.9rem;
+}
+
+.figure-header {
+  margin-bottom: 0.45rem;
+  flex-shrink: 0;
+  text-align: center;
+}
+
+.figure-title {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.45;
+  letter-spacing: 0.02em;
+}
+
+.figure-note {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 0.90rem;
+  color: var(--muted);
+  margin-top: 0.2rem;
+}
+
+.chart-stage {
+  flex: 1;
+  position: relative;
+  min-height: 0;
+}
+
+.chart-wrap {
+  width: 100%;
+  height: 100%;
+}
+
+.figure-footer {
+  margin-top: 0.45rem;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+@media (max-width: 768px) {
+  .figure-container { padding: 1.2rem 1.4rem 1rem; }
+  .figure-title { font-size: 1.4rem; }
+}
+
+@media (max-width: 480px) {
+  .figure-container { padding: 0.9rem 1rem 0.8rem; }
+  .figure-title { font-size: 1.1rem; }
+  .figure-note { font-size: 0.72rem; }
+}
+</style>
+</head>
+<body>
+
+<div class="figure-container">
+
+  <div class="figure-header">
+    <div class="figure-title">八大古典园林避免排放贡献排名</div>
+    <div class="figure-note">合计避免排放：14,611 kg CO₂ / 年；留园以4,451 kg居首，占总避免排放的30.5%</div>
+  </div>
+
+  <div class="chart-stage">
+    <div class="chart-wrap" id="mainChart"></div>
+  </div>
+
+  <div class="figure-footer">
+    <div class="figure-note" style="font-style: italic">单位：kg CO₂ / 年</div>
+  </div>
+
+</div>
+
+<script>
+const greenGradient = new echarts.graphic.LinearGradient(0, 0, 1, 0, [
+  { offset: 0, color: '#2D5A27' },
+  { offset: 1, color: '#6BA368' }
+]);
+
+const commonFont = "'Noto Serif SC','Source Han Serif SC','Songti SC','SimSun',serif";
+
+const data = [
+  { name: '留园',     value: 4451, pct: '30.5%' },
+  { name: '环秀山庄',  value: 1999, pct: '13.7%' },
+  { name: '网师园',   value: 1817, pct: '12.4%' },
+  { name: '沧浪亭',   value: 1640, pct: '11.2%' },
+  { name: '狮子林',   value: 1435, pct: '9.8%'  },
+  { name: '耦园',     value: 1107, pct: '7.6%'  },
+  { name: '拙政园',   value: 1086, pct: '7.4%'  },
+  { name: '艺圃',     value: 1075, pct: '7.4%'  }
+];
+
+const chart = echarts.init(document.getElementById('mainChart'));
+
+const option = {
+  backgroundColor: 'transparent',
+  animationDuration: 900,
+  animationEasing: 'cubicOut',
+  tooltip: {
+    trigger: 'axis',
+    axisPointer: { type: 'shadow', shadowStyle: { color: 'rgba(45,90,39,0.08)' } },
+    backgroundColor: '#FFFFFF',
+    borderColor: '#D8D0C0',
+    borderWidth: 1,
+    textStyle: { color: '#2A241E', fontSize: 15, fontFamily: commonFont },
+    formatter: function(params) {
+      const p = params[0];
+      return '<strong>' + p.name + '</strong><br/>' +
+             '年避免排放：<span style="color:#2D5A27;font-weight:700;">' + p.value.toLocaleString() + '</span> kg<br/>' +
+             '占比：<span style="color:#2D5A27;font-weight:700;">' + p.data.pct + '</span>';
+    }
+  },
+  grid: {
+    left: 'center',
+    width: '80%',
+    top: '2%',
+    bottom: '2%',
+    containLabel: true
+  },
+  xAxis: {
+    type: 'value',
+    axisLabel: { color: '#6B655D', fontSize: 13, fontFamily: commonFont },
+    splitLine: { lineStyle: { color: '#E0DCD4', type: 'solid', width: 0.5 } },
+    axisLine: { lineStyle: { color: '#C8C2B8', width: 0.8 } },
+    axisTick: { show: false }
+  },
+  yAxis: {
+    type: 'category',
+    inverse: true,
+    data: data.map(d => d.name),
+    axisLabel: {
+      color: '#2A241E',
+      fontSize: 13,
+      fontWeight: 600,
+      fontFamily: commonFont,
+      formatter: function(v) {
+        if (v === '留园') return '{highlight|' + v + '}';
+        return v;
+      },
+      rich: {
+        highlight: { color: '#2D5A27', fontWeight: 700, fontSize: 14 }
+      }
+    },
+    axisLine: { lineStyle: { color: '#C8C2B8', width: 0.8 } },
+    axisTick: { show: false }
+  },
+  series: [{
+    type: 'bar',
+    data: data.map((d) => ({
+      value: d.value,
+      pct: d.pct,
+      itemStyle: { color: greenGradient, borderRadius: [0, 2, 2, 0] }
+    })),
+    barWidth: 26,
+    label: {
+      show: true,
+      position: 'right',
+      color: '#2A241E',
+      fontSize: 13,
+      fontWeight: 600,
+      fontFamily: commonFont,
+      formatter: function(p) {
+        return p.value.toLocaleString();
+      }
+    },
+    emphasis: {
+      itemStyle: { color: '#8BC48A' }
+    }
+  }]
+};
+
+chart.setOption(option);
+
+window.addEventListener('resize', function() {
+  chart.resize();
+});
+</script>
+</body>
+</html>
