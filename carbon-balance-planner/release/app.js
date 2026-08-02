@@ -50,13 +50,12 @@
     oldcity: $('#layer-oldcity'),
     gardens: $('#layer-gardens'),
     temperature: $('#layer-temperature'),
-    contours: $('#layer-contours'),
     buildings: $('#layer-buildings'),
     walk: $('#layer-walk')
   };
 
   // --- State ---
-  var ASSET_VERSION = 'v42';
+  var ASSET_VERSION = 'v43';
   var state = {
     height: 24,
     green: 40,
@@ -80,7 +79,6 @@
       oldcity: true,
       gardens: true,
       temperature: true,
-      contours: true,
       buildings: true,
       walk: true
     },
@@ -600,7 +598,6 @@
     buildings: null,
     roads: null,
     lstBounds: null,
-    contours: null,
     balanceGrid: null
   };
 
@@ -853,48 +850,6 @@
           }
         }
       }, 15000);
-
-      // Load contour data (isotherm lines) - 坐标已在WGS84
-      // 使用MapLibre内置URL加载，避免JSON.parse阻塞主线程
-      if (!map.getSource('contours')) {
-        map.addSource('contours', {
-          type: 'geojson',
-          data: dataBasePath + 'lst_contours_2degC.json?_cb=' + ASSET_VERSION
-        });
-      }
-      if (!map.getLayer('temperature-contours')) {
-        map.addLayer({
-          id: 'temperature-contours',
-          type: 'line',
-          source: 'contours',
-          layout: { 'line-join': 'round', 'line-cap': 'round' },
-          paint: {
-            'line-color': [
-              'interpolate', ['linear'], ['get', 't'],
-              32, '#3A6EA5',
-              36, '#5A8EB5',
-                  40, '#90B090',
-                  44, '#D4C840',
-                  48, '#E08030',
-                  52, '#D04028',
-                  56, '#B82820'
-                ],
-                'line-width': [
-                  'interpolate', ['linear'], ['get', 't'],
-                  32, 2.8,
-                  36, 2.5,
-                  40, 2.0,
-                  44, 1.7,
-                  48, 1.4,
-                  52, 1.2,
-                  56, 1.0
-                ],
-                'line-opacity': 0.92
-              }
-            });
-          }
-          updateContourLayer();
-          updateLayerVisibility();
 
       // Load buildings: lite first, fallback to full if needed
       loadJSON(dataBasePath + 'suzhou_buildings_gusu_lite.json', function(err, data) {
@@ -1160,41 +1115,7 @@
       });
     }
 
-    // --- Layer 6: Isotherm contours ---
-    if (sourceData.contours) {
-      addGeoJSONSource('contours', sourceData.contours);
-      map.addLayer({
-        id: 'temperature-contours',
-        type: 'line',
-        source: 'contours',
-        layout: { 'line-join': 'round', 'line-cap': 'round' },
-        paint: {
-          'line-color': [
-            'interpolate', ['linear'], ['get', 't'],
-            32, '#3A6EA5',
-            36, '#5A8EB5',
-            40, '#90B090',
-            44, '#D4C840',
-            48, '#E08030',
-            52, '#D04028',
-            56, '#B82820'
-          ],
-          'line-width': [
-            'interpolate', ['linear'], ['get', 't'],
-            32, 2.8,
-            36, 2.5,
-            40, 2.0,
-            44, 1.7,
-            48, 1.4,
-            52, 1.2,
-            56, 1.0
-          ],
-          'line-opacity': 0.92
-        }
-      });
-    }
-
-    // --- Layer 7: Gardens (top) ---
+    // --- Layer 6: Gardens (top) ---
     state.gardens = sourceData.gardens.features.map(function(f) {
       return {
         name: f.properties.name,
@@ -1277,7 +1198,6 @@
     updateBuildings();
     updateWalkNetwork();
     updateTemperatureLayer();
-    updateContourLayer();
   }
 
   function turfBbox(geojson) {
@@ -1346,63 +1266,6 @@
     });
   }
 
-
-  function updateContourLayer() {
-    // 等温线按温度阈值差异化响应绿地覆盖率 + 园林冷岛效应
-    // 绿地覆盖率↑ / 园林保留 → 低温等温线更明显，高温等温线消退
-    // 绿地覆盖率↓ / 园林移除 → 高温等温线更明显，低温等温线消退
-    if (!map.getLayer('temperature-contours')) return;
-    var g = state.green;
-    var baseline = 40;
-    var greenRatio = (g - baseline) / baseline;
-
-    // 园林冷岛效应：移除园林→冷岛消失→等温线应偏向高温
-    var totalColdIsland = 0, activeColdIsland = 0;
-    state.gardens.forEach(function(garden) {
-      var ci = Math.abs(garden.cool_delta || 0);
-      totalColdIsland += ci;
-      if (state.activeGardens[garden.name]) activeColdIsland += ci;
-    });
-    var coldIslandRatio = totalColdIsland > 0 ? activeColdIsland / totalColdIsland : 1;
-    // 冷岛比率越低(移除越多园林) → 效果等同于绿地覆盖率降低
-    var coldFactor = (coldIslandRatio - 1) * 0.6; // 范围: -0.6 ~ 0
-    var combinedRatio = greenRatio + coldFactor;
-
-    // 计算各温度阈值对应的线宽和透明度
-    // 绿地多→低温线加粗加亮，高温线变细变淡
-    // 绿地少→高温线加粗加亮，低温线变细变淡
-    var t32w = 2.8 * (1.0 + combinedRatio * 1.5);   // 32°C: 绿地多→更粗
-    var t36w = 2.5 * (1.0 + combinedRatio * 1.2);
-    var t40w = 2.0 * (1.0 + combinedRatio * 0.8);
-    var t44w = 1.7 * (1.0 - combinedRatio * 0.5);   // 中间温度基本不变
-    var t48w = 1.4 * (1.0 - combinedRatio * 1.0);
-    var t52w = 1.2 * (1.0 - combinedRatio * 1.3);
-    var t56w = 1.0 * (1.0 - combinedRatio * 1.5);   // 56°C: 绿地多→更细
-
-    var t32o = 0.92 * (1.0 + combinedRatio * 0.8);  // 32°C: 绿地多→更亮
-    var t36o = 0.92 * (1.0 + combinedRatio * 0.6);
-    var t40o = 0.92 * (1.0 + combinedRatio * 0.3);
-    var t44o = 0.92;
-    var t48o = 0.92 * (1.0 - combinedRatio * 0.5);
-    var t52o = 0.92 * (1.0 - combinedRatio * 0.7);
-    var t56o = 0.92 * (1.0 - combinedRatio * 0.8);  // 56°C: 绿地多→更淡
-
-    // 钳制到合理范围
-    var clampW = function(v) { return Math.max(0.3, Math.min(5.0, v)); };
-    var clampO = function(v) { return Math.max(0.15, Math.min(1.0, v)); };
-
-    map.setPaintProperty('temperature-contours', 'line-width', [
-      'interpolate', ['linear'], ['get', 't'],
-      32, clampW(t32w), 36, clampW(t36w), 40, clampW(t40w),
-      44, clampW(t44w), 48, clampW(t48w), 52, clampW(t52w), 56, clampW(t56w)
-    ]);
-
-    map.setPaintProperty('temperature-contours', 'line-opacity', [
-      'interpolate', ['linear'], ['get', 't'],
-      32, clampO(t32o), 36, clampO(t36o), 40, clampO(t40o),
-      44, clampO(t44o), 48, clampO(t48o), 52, clampO(t52o), 56, clampO(t56o)
-    ]);
-  }
 
   function updateBuildings() {
     if (!map.getLayer('buildings-3d-inner')) return;
@@ -1479,7 +1342,6 @@
       'gardens-fill': v.gardens,
       'gardens-line': v.gardens,
       'temperature-layer': v.temperature,
-      'temperature-contours': v.contours,
       'cold-island-overlay': v.temperature,
       'roads-base': v.walk,
       'roads-walk': v.walk
@@ -1504,7 +1366,6 @@
     if (!state.mapReady) return;
     updateBuildings();
     updateWalkNetwork();
-    updateContourLayer();
     updateTemperatureLayer();
     updateGardenVisibility();
     updateLayerVisibility();
