@@ -78,9 +78,9 @@
       boundary: true,
       oldcity: true,
       gardens: true,
-      temperature: true,
-      buildings: true,
-      walk: true
+      temperature: false,
+      buildings: false,
+      walk: false
     },
     view3D: false,
     legendVisible: true,
