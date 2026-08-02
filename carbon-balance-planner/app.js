@@ -56,7 +56,7 @@
   };
 
   // --- State ---
-  var ASSET_VERSION = 'v41';
+  var ASSET_VERSION = 'v42';
   var state = {
     height: 24,
     green: 40,
@@ -1251,7 +1251,7 @@
       type: 'circle',
       source: 'cold-island-overlay-source',
       paint: {
-        'circle-color': '#E87030',
+        'circle-color': '#D04020',
         // 极低不透明度，按冷岛强度缩放
         'circle-opacity': ['*', 0.4, ['/', ['get', 'cool_delta'], maxCoolDelta || 1]],
         // 固定大半径，不随缩放变化
