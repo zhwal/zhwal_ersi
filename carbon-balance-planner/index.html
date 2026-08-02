@@ -830,26 +830,6 @@ details.section-collapsible .collapsible-body {
   height: 100%;
 }
 
-/* Map overlay */
-.map-overlay {
-  position: absolute;
-  bottom: 0;
-  right: 0.6rem;
-  background: rgba(255,255,255,0.92);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  padding: 0.5rem 0.9rem;
-  border-radius: var(--radius-md);
-  font-size: 0.7rem;
-  color: var(--muted);
-  box-shadow: var(--shadow-sm);
-  pointer-events: none;
-  z-index: 100;
-  font-family: var(--font-heading);
-  letter-spacing: 0.02em;
-}
-.map-overlay strong { color: var(--ink); font-weight: 700; }
-
 /* Map legend */
 .map-legend {
   position: absolute;
@@ -1705,11 +1685,6 @@ details.section-collapsible .collapsible-body {
           使用 <code>npx http-server . -p 8080</code> 或 Live Server 插件打开
         </div>
       </div>
-    </div>
-
-    <!-- Map info overlay -->
-    <div class="map-overlay" id="map-info">
-      <strong>苏州</strong> · 碳平衡空间格局
     </div>
 
     <!-- Map legend -->
