@@ -21,7 +21,3 @@ scripts/
 # Temp files
 *.tmp
 *.log
-
-# Large data files (>25MB CF Pages limit)
-carbon-balance-planner/data/lst_contours_2degC.json
-carbon-balance-planner/release/data/lst_contours_2degC.json
