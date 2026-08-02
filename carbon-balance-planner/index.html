@@ -2024,6 +2024,12 @@ var INLINE_GARDENS_POINTS = [
       position: 'right'
     },
     {
+      target: '.scenario-group',
+      title: '预设情景切换',
+      desc: '点击「基线发展」「园林城市」「平衡发展」可快速切换预设参数组合，对比不同策略的低碳效果。',
+      position: 'bottom'
+    },
+    {
       target: '.score-section',
       title: '低碳规划得分',
       desc: '综合建筑高度、绿地覆盖、慢行替代与园林保留状态，计算低碳规划得分（A-D）和碳平衡指数。',
@@ -2152,10 +2158,16 @@ var INLINE_GARDENS_POINTS = [
   }
 
   function endTour() {
-    document.getElementById('tour-overlay').classList.remove('active');
-    document.getElementById('tour-tooltip').classList.remove('visible');
-    document.getElementById('tour-spotlight').style.width = '0';
-    document.getElementById('tour-spotlight').style.height = '0';
+    var overlay = document.getElementById('tour-overlay');
+    var tooltip = document.getElementById('tour-tooltip');
+    var spotlight = document.getElementById('tour-spotlight');
+    if (overlay) overlay.classList.remove('active');
+    if (tooltip) tooltip.classList.remove('visible');
+    if (spotlight) {
+      spotlight.style.width = '0';
+      spotlight.style.height = '0';
+      spotlight.style.boxShadow = 'none';
+    }
     try { localStorage.setItem(STORAGE_KEY, '1'); } catch(e) {}
   }
 
