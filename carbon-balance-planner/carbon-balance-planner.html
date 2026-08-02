@@ -5,7 +5,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>碳平衡规划师 · 苏州低碳未来交互推演</title>
-<meta name="description" content="苏州碳平衡规划师 — 拖动滑块，调整建筑高度约束、绿地覆盖率和慢行网络覆盖率，实时推演苏州碳平衡得分变化。基于前四章空间分析机制的交互式决策工具。">
+<meta name="description" content="苏州碳平衡规划师 — 拖动滑块，调整建筑高度约束、绿地覆盖率和慢行网络覆盖率，实时推演苏州低碳规划综合得分变化。基于前四章空间分析机制的交互式决策工具。">
 
 <!-- MapLibre GL JS -->
 <script src="https://unpkg.com/maplibre-gl@4.5.0/dist/maplibre-gl.js" crossorigin="anonymous"></script>
@@ -193,6 +193,9 @@ body {
   pointer-events: none;
   padding: 0;
   line-height: 1;
+}
+.panel-expand-tab-right {
+  border-radius: 6px 0 0 6px;
 }
 .panel-left.collapsed ~ .panel-expand-tab-left,
 .panel-left.collapsed + .panel-expand-tab-left {
@@ -413,6 +416,12 @@ body {
   text-align: left;
 }
 
+/* ===== Prevent text selection on slider drag ===== */
+.control-group, .slider-wrapper, input[type="range"], .panel-body, .panel-left {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 /* ===== Sliders ===== */
 .slider-wrapper {
   position: relative;
@@ -427,6 +436,9 @@ input[type="range"] {
   outline: none;
   cursor: pointer;
   transition: opacity var(--transition-fast);
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: none;
 }
 input[type="range"]:hover {
   opacity: 0.9;
@@ -809,6 +821,9 @@ details.section-collapsible .collapsible-body {
   background: var(--bg);
   min-width: 0;
   overflow: hidden;
+  will-change: contents;
+  backface-visibility: hidden;
+  transform: translateZ(0);
 }
 #map-container {
   width: 100%;
@@ -818,8 +833,8 @@ details.section-collapsible .collapsible-body {
 /* Map overlay */
 .map-overlay {
   position: absolute;
-  bottom: 1rem;
-  left: 1rem;
+  bottom: 1.8rem;
+  right: 0.6rem;
   background: rgba(255,255,255,0.92);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
@@ -1122,6 +1137,9 @@ details.section-collapsible .collapsible-body {
   padding: 1.2rem 1.5rem;
   flex-shrink: 0;
   position: relative;
+  min-height: 4.6rem;
+  display: flex;
+  align-items: center;
 }
 .dash-header::after {
   content: '';
@@ -1389,6 +1407,7 @@ details.section-collapsible .collapsible-body {
     border-bottom: 1px solid var(--rule);
     order: 2;
   }
+  .panel-left.collapsed { display: none; }
   .panel-right {
     width: 100%;
     min-width: 100%;
@@ -1398,6 +1417,8 @@ details.section-collapsible .collapsible-body {
     border-top: 1px solid var(--rule);
     order: 3;
   }
+  .panel-right.collapsed { display: none; }
+  .panel-expand-tab { display: none; }
   .map-area {
     flex: 1;
     min-height: 280px;
@@ -1496,7 +1517,7 @@ details.section-collapsible .collapsible-body {
     <div class="panel-body">
       <!-- Carbon Total Card -->
       <div class="carbon-total-card" aria-live="polite">
-        <div class="ct-label"><span class="iconpark-icon" data-iconpark="Leaf" data-size="16" aria-hidden="true"></span> 园林绿地总碳汇</div>
+        <div class="ct-label"><span class="iconpark-icon" data-iconpark="Leaf" data-size="16" aria-hidden="true"></span> 古典园林总碳汇</div>
         <div class="ct-value" id="carbon-total-card">—</div>
         <div class="ct-delta" id="carbon-total-delta"></div>
         <div class="ct-note">实时统计当前纳入推演的绿地碳汇</div>
@@ -1524,14 +1545,14 @@ details.section-collapsible .collapsible-body {
         <div class="control-label">
           <span class="name">
             路径二：绿地覆盖率
-            <span class="info-tip" data-tip="对应第三章路径二：冷岛效应→省空调。权重45%。以2023年苏州建成区绿地率40.23%为基准。每±10%绿地变化→LST±0.6°C。调低→高温区扩张，调高→高温区萎缩。" tabindex="0" role="tooltip" aria-label="路径二说明">?</span>
+            <span class="info-tip" data-tip="对应第三章路径二：冷岛效应→省空调。权重45%。以2023年苏州建成区绿地率40%为基准。每±10%绿地变化→LST±0.6°C。调低→高温区扩张，调高→高温区萎缩。" tabindex="0" role="tooltip" aria-label="路径二说明">?</span>
           </span>
-          <span class="value" id="val-green" aria-live="polite">38%</span>
+          <span class="value" id="val-green" aria-live="polite">40%</span>
         </div>
-        <p class="control-desc">以2023年苏州建成区绿地率40.23%为基准。每±10%绿地变化→地表温度±0.6°C，调低→高温区扩张，调高→高温区萎缩</p>
+        <p class="control-desc">以2023年苏州建成区绿地率40%为基准。每±10%绿地变化→地表温度±0.6°C，调低→高温区扩张，调高→高温区萎缩</p>
         <div class="slider-wrapper">
-          <input type="range" id="slider-green" min="20" max="70" value="40.23" step="0.01"
-                 aria-label="绿地覆盖率滑块，范围20%到70%" aria-valuemin="20" aria-valuemax="70" aria-valuenow="40.23" aria-valuetext="40.23%">
+          <input type="range" id="slider-green" min="20" max="70" value="40" step="1"
+                 aria-label="绿地覆盖率滑块，范围20%到70%" aria-valuemin="20" aria-valuemax="70" aria-valuenow="40" aria-valuetext="40%">
           <div class="slider-marks"><span>20%</span><span>30%</span><span>40%</span><span>50%</span><span>70%</span></div>
         </div>
       </div>
@@ -1557,21 +1578,21 @@ details.section-collapsible .collapsible-body {
       <div class="section-divider">情景预设</div>
       <div class="scenario-group" role="radiogroup" aria-label="情景预设">
         <button class="btn-scenario active" data-scenario="baseline" id="btn-baseline" role="radio" aria-checked="true" aria-label="现状情景：限高24米，绿地40%，慢行45%">
-          <span class="sc-icon iconpark-icon" data-iconpark="ChartLine" data-size="22" aria-hidden="true"></span>
+          <span class="sc-icon"><img src="data/market-analysis.png" width="22" height="22" alt="" style="display:block;"></span>
           <div class="sc-info">
             <div class="sc-name">现状情景</div>
-            <div class="sc-desc">限高24m · 绿地40.23% · 慢行45%</div>
+            <div class="sc-desc">限高24m · 绿地40% · 慢行45%</div>
           </div>
         </button>
-        <button class="btn-scenario" data-scenario="garden" id="btn-garden" role="radio" aria-checked="false" aria-label="园林优先：限高18米，绿地60%，慢行65%">
-          <span class="sc-icon iconpark-icon" data-iconpark="Leaf" data-size="22" aria-hidden="true"></span>
+        <button class="btn-scenario" data-scenario="garden" id="btn-garden" role="radio" aria-checked="false" aria-label="生态园林：限高18米，绿地55%，慢行60%">
+          <span class="sc-icon"><img src="data/landscape.png" width="22" height="22" alt="" style="display:block;"></span>
           <div class="sc-info">
-            <div class="sc-name">园林优先</div>
-            <div class="sc-desc">限高18m · 绿地60% · 慢行65%</div>
+            <div class="sc-name">生态园林</div>
+            <div class="sc-desc">限高18m · 绿地55% · 慢行60%</div>
           </div>
         </button>
         <button class="btn-scenario" data-scenario="balance" id="btn-balance" role="radio" aria-checked="false" aria-label="平衡发展：限高30米，绿地50%，慢行55%">
-          <span class="sc-icon iconpark-icon" data-iconpark="Balance" data-size="22" aria-hidden="true"></span>
+          <span class="sc-icon"><img src="data/balance-two.png" width="22" height="22" alt="" style="display:block;"></span>
           <div class="sc-info">
             <div class="sc-name">平衡发展</div>
             <div class="sc-desc">限高30m · 绿地50% · 慢行55%</div>
@@ -1589,16 +1610,16 @@ details.section-collapsible .collapsible-body {
             <div class="layer-group-title">基础图层</div>
             <div class="layer-switch-group compact" role="group" aria-label="基础地图图层开关">
               <label class="layer-switch">
+                <input type="checkbox" id="layer-gardens" checked aria-label="显示古典园林">
+                <span>古典园林</span>
+              </label>
+              <label class="layer-switch">
                 <input type="checkbox" id="layer-boundary" checked aria-label="显示行政边界">
                 <span>行政边界</span>
               </label>
               <label class="layer-switch">
                 <input type="checkbox" id="layer-oldcity" checked aria-label="显示古城边界">
                 <span>古城边界</span>
-              </label>
-              <label class="layer-switch">
-                <input type="checkbox" id="layer-gardens" checked aria-label="显示园林绿地">
-                <span>园林绿地</span>
               </label>
             </div>
           </div>
@@ -1628,7 +1649,7 @@ details.section-collapsible .collapsible-body {
 
       <!-- Garden Toggles -->
       <details class="section-collapsible">
-        <summary>园林 / 绿地开关</summary>
+        <summary>园林开关</summary>
         <div class="collapsible-body">
           <div class="garden-toggle-header">
             <span>取消勾选可模拟移除该绿地</span>
@@ -1637,7 +1658,7 @@ details.section-collapsible .collapsible-body {
               <button id="garden-uncheck-all" type="button">全不选</button>
             </span>
           </div>
-          <div class="garden-toggle-group" id="garden-toggle-group" role="group" aria-label="园林绿地开关"></div>
+          <div class="garden-toggle-group" id="garden-toggle-group" role="group" aria-label="园林开关"></div>
         </div>
       </details>
 
@@ -1707,8 +1728,8 @@ details.section-collapsible .collapsible-body {
         <div class="legend-item"><span class="legend-line" style="background:transparent;border-top:2px dashed #8B6E5A;"></span> 姑苏古城</div>
       </div>
       <div class="legend-section">
-        <div class="legend-item"><span class="legend-gradient" style="background:linear-gradient(90deg,#5380B5,#8CACBE,#F0D264,#D7362C);border:1px solid var(--rule);"></span> 地表温度</div>
-        <div class="legend-item"><span class="legend-gradient" style="background:linear-gradient(90deg,#F5F0E8,#D4CFC4,#C4A882,#8B6E5A,#5A4A3A,#3A2E24);border:1px solid var(--rule);"></span> 3D建筑高度</div>
+        <div class="legend-item"><span class="legend-gradient" style="background:linear-gradient(90deg,#5380B5,#8CACBE,#A0B99B,#F0D264,#E68237,#D7362C);border:1px solid var(--rule);"></span> 地表温度</div>
+        <div class="legend-item"><span class="legend-gradient" style="background:linear-gradient(90deg,#FEF7D0,#FAE6C4,#F6D8BA,#EFBFA7,#E8A494,#E38E84,#DD7C76,#CD5F65,#BD5160,#A23B59,#82264F,#711D49,#570E40,#46053F);border:1px solid var(--rule);"></span> 3D建筑高度</div>
       </div>
       <div class="legend-section">
         <div class="legend-item"><span class="legend-line" style="background:#5B8C5A;"></span> 慢行路网</div>
@@ -1734,9 +1755,9 @@ details.section-collapsible .collapsible-body {
   </main>
 
   <!-- ===== RIGHT PANEL: Dashboard ===== -->
-  <aside class="panel-right" role="complementary" aria-label="碳平衡得分仪表盘">
+  <aside class="panel-right" role="complementary" aria-label="规划得分仪表盘">
     <div class="dash-header">
-      <h2>碳平衡得分</h2>
+      <h2>规划得分</h2>
       <button class="panel-collapse-btn" id="btn-collapse-right" title="收起面板" aria-label="收起右侧面板">▶</button>
     </div>
     <div class="dash-body">
@@ -1744,7 +1765,7 @@ details.section-collapsible .collapsible-body {
       <div class="score-section">
         <div class="score-ring">
           <div class="score-value" id="score-value" aria-live="polite" aria-atomic="true">54<span class="score-max">/100</span></div>
-        <div class="score-label">碳平衡综合得分</div>
+        <div class="score-label">低碳规划综合得分</div>
       </div>
       <span class="score-grade grade-C" id="score-grade">C · 一般</span>
       </div>
@@ -1753,64 +1774,79 @@ details.section-collapsible .collapsible-body {
       <div class="carbon-summary">
         <div class="carbon-summary-row">
           <span class="label">
-            园林绿地总碳汇
-            <span class="info-tip" data-tip="八座古典园林的理论年碳汇总量，基于MODIS NPP分区统计，不受当前移除状态影响。" tabindex="0" role="tooltip" aria-label="园林绿地总碳汇说明">?</span>
+            古典园林总碳汇
+            <span class="info-tip" data-tip="八座古典园林的理论年碳汇总量，基于MODIS NPP分区统计，不受当前移除状态影响。" tabindex="0" role="tooltip" aria-label="古典园林总碳汇说明">?</span>
           </span>
           <span class="value total" id="carbon-total">—</span>
         </div>
         <div class="carbon-summary-row">
           <span class="label">
             当前纳入碳汇
-            <span class="info-tip" data-tip="扣除已移除园林后的实时碳汇量。取消左侧“园林/绿地开关”中的勾选可模拟移除该绿地。" tabindex="0" role="tooltip" aria-label="当前纳入碳汇说明">?</span>
+            <span class="info-tip" data-tip="扣除已移除园林后的实时碳汇量。取消左侧“园林开关”中的勾选可模拟移除该绿地。" tabindex="0" role="tooltip" aria-label="当前纳入碳汇说明">?</span>
           </span>
           <span class="value delta" id="carbon-removed">—</span>
         </div>
         <div class="carbon-summary-row">
           <span class="label">
-            实时碳平衡指数
-            <span class="info-tip" data-tip="综合建筑高度、绿地覆盖、慢行覆盖与绿地移除状态的空间碳平衡指数（0–100）。数值越高，代表当前参数组合下的碳平衡表现越好。" tabindex="0" role="tooltip" aria-label="实时碳平衡指数说明">?</span>
+            低碳综合指数
+            <span class="info-tip" data-tip="综合建筑高度、绿地覆盖、慢行覆盖与绿地移除状态的低碳综合指数（0–100）。数值越高，代表当前参数组合下的低碳表现越好。" tabindex="0" role="tooltip" aria-label="低碳综合指数说明">?</span>
           </span>
           <span class="value balance" id="carbon-balance">—</span>
         </div>
-        <div class="carbon-summary-note">取消左侧“园林/绿地开关”中的勾选，可模拟移除该绿地后的冷岛、慢行与碳平衡变化。</div>
+        <div class="carbon-summary-note">取消左侧“园林开关”中的勾选，可模拟移除该绿地后的冷岛、慢行与综合得分变化。</div>
       </div>
 
       <!-- Carbon balance calculation explanation -->
       <details class="section-collapsible">
-        <summary>碳平衡怎么算？</summary>
+        <summary>得分怎么算？</summary>
         <div class="collapsible-body" style="font-size:0.75rem;line-height:1.6;color:var(--ink2);">
-          <p style="margin-bottom:0.5rem;"><strong>综合得分</strong> = 形态约束×45% + 冷岛效应×45% + 慢行替代×10%</p>
-          <ul style="padding-left:1.2rem;margin-bottom:0.5rem;list-style:disc;">
-            <li>形态约束：限高越低，古城低层形态优势越明显，运行能耗越低。</li>
-            <li>冷岛效应：绿地覆盖率越高，园林冷岛辐射越强，周边制冷能耗节省越多。</li>
-            <li>慢行替代：慢行网络覆盖率越高，步行替代驾车潜力越大，但交通减排总量有限。</li>
-          </ul>
-          <p style="margin-bottom:0.5rem;"><strong>实时碳平衡指数</strong> = 综合得分×70% + 绿地保留比例×30%。保留绿地越多，指数越高。</p>
-          <p>八座古典园林年碳汇合计 <strong>167.40 tCO₂</strong>（基于MODIS NPP分区统计）。六座园林（拙政园、狮子林、环秀山庄、留园、沧浪亭、耦园）在卫星热红外影像中呈现显著冷岛效应（降温0.1–4.3°C），网师园和艺圃因混合像元稀释而LST不可检。八园步行碳减排合计约14.61 tCO₂/yr。移除某座园林后，其冷岛影响区消失、以该园为起点的慢行可达路网收缩，进而降低碳平衡表现。</p>
+          <p style="margin-bottom:0.6rem;"><strong>本系统计算的是"低碳规划综合得分"</strong>，而非严格的碳收支核算。得分基于三条路径的加权求和，每条路径独立评分（0–100），再按权重合成。</p>
+
+          <p style="margin-bottom:0.4rem;"><strong>公式一：各路径得分</strong></p>
+          <div style="background:var(--bg);padding:0.5rem 0.8rem;border-radius:4px;margin-bottom:0.5rem;font-family:var(--font-mono);font-size:0.7rem;line-height:1.8;">
+            P<sub>形态</sub> = 100 − (H − 18) / 42 × 100 &nbsp;&nbsp;<span style="color:var(--muted);">（H = 建筑限高，18–60m；18m为苏州古城典型檐口高度）</span><br>
+            P<sub>冷岛</sub> = (G − 20) / 50 × 100 &nbsp;&nbsp;<span style="color:var(--muted);">（G = 绿地覆盖率，20–70%）</span><br>
+            P<sub>慢行</sub> = (W − 20) / 70 × 100 &nbsp;&nbsp;<span style="color:var(--muted);">（W = 慢行覆盖率，20–90%）</span>
+          </div>
+
+          <p style="margin-bottom:0.4rem;"><strong>公式二：综合得分（含园林开关联动）</strong></p>
+          <div style="background:var(--bg);padding:0.5rem 0.8rem;border-radius:4px;margin-bottom:0.5rem;font-family:var(--font-mono);font-size:0.7rem;line-height:1.8;">
+            Score = (P<sub>形态</sub>×0.45 + P<sub>冷岛</sub>×0.45 + P<sub>慢行</sub>×0.10) × C<sub>系数</sub><br>
+            C<sub>系数</sub> = 0.85 + 0.15 × (保留碳汇 / 总碳汇)
+          </div>
+          <p style="margin-bottom:0.5rem;font-size:0.7rem;color:var(--muted);">C<sub>系数</sub> 反映园林保留比例：全部保留 = 1.0，全部移除 = 0.85。冷岛效应权重中，P<sub>冷岛</sub> 还会额外乘以冷岛强度保留比例。</p>
+
+          <p style="margin-bottom:0.4rem;"><strong>公式三：低碳综合指数</strong></p>
+          <div style="background:var(--bg);padding:0.5rem 0.8rem;border-radius:4px;margin-bottom:0.5rem;font-family:var(--font-mono);font-size:0.7rem;line-height:1.8;">
+            Index = Score × 0.7 + (保留碳汇 / 总碳汇) × 30
+          </div>
+          <p style="margin-bottom:0.5rem;font-size:0.7rem;color:var(--muted);">综合得分反映规划参数优劣，低碳指数额外纳入绿地保留比例，保留越多指数越高。</p>
+
+          <p style="font-size:0.7rem;color:var(--muted);">权重依据：形态约束与冷岛效应各占45%（建筑运行能耗与绿地降温是城市低碳两大支柱），慢行替代占10%（交通减排总量有限但不可忽略）。学术参考：Zheng et al.(2019) 建筑高度-LST关系；Jiang et al.(2025) 碳平衡指数 CBI = CE/CA。</p>
         </div>
       </details>
 
       <!-- Gauge chart -->
       <div class="chart-box">
         <h3>得分仪表盘</h3>
-        <div class="chart-container chart-container-large" id="chart-gauge" role="img" aria-label="碳平衡得分仪表盘"></div>
+        <div class="chart-container chart-container-large" id="chart-gauge" role="img" aria-label="规划得分仪表盘"></div>
       </div>
 
       <!-- Path breakdown -->
       <div class="path-section">
         <h3 style="font-family:var(--font-heading);font-size:0.7rem;font-weight:700;color:var(--muted);letter-spacing:0.05em;text-transform:uppercase;margin-bottom:0.4rem;">路径贡献分解</h3>
         <div class="path-item">
-          <span class="path-name"><span class="path-icon iconpark-icon" data-iconpark="City" data-size="18" aria-hidden="true"></span>形态约束<span class="path-weight">×45%</span></span>
+          <span class="path-name"><span class="path-icon"><img src="data/city.png" width="18" height="18" alt="" style="vertical-align:middle;display:block;"></span>形态约束<span class="path-weight">×45%</span></span>
           <div class="path-bar-bg"><div class="path-bar-fill" id="bar1" style="width:75%"></div></div>
           <span class="path-score" id="path1-score">75</span>
         </div>
         <div class="path-item">
-          <span class="path-name"><span class="path-icon iconpark-icon" data-iconpark="Thermometer" data-size="18" aria-hidden="true"></span>冷岛效应<span class="path-weight">×45%</span></span>
+          <span class="path-name"><span class="path-icon"><img src="data/snowflake.png" width="18" height="18" alt="" style="vertical-align:middle;display:block;"></span>冷岛效应<span class="path-weight">×45%</span></span>
           <div class="path-bar-bg"><div class="path-bar-fill" id="bar2" style="width:36%"></div></div>
           <span class="path-score" id="path2-score">36</span>
         </div>
         <div class="path-item">
-          <span class="path-name"><span class="path-icon iconpark-icon" data-iconpark="People" data-size="18" aria-hidden="true"></span>慢行替代<span class="path-weight">×10%</span></span>
+          <span class="path-name"><span class="path-icon"><img src="data/guide-board.png" width="18" height="18" alt="" style="vertical-align:middle;display:block;"></span>慢行替代<span class="path-weight">×10%</span></span>
           <div class="path-bar-bg"><div class="path-bar-fill" id="bar3" style="width:36%"></div></div>
           <span class="path-score" id="path3-score">36</span>
         </div>
@@ -1819,12 +1855,12 @@ details.section-collapsible .collapsible-body {
       <!-- Comparison chart -->
       <div class="chart-box">
         <h3>情景对比</h3>
-        <div class="chart-container" id="chart-compare" role="img" aria-label="情景碳平衡得分对比"></div>
+        <div class="chart-container" id="chart-compare" role="img" aria-label="情景规划得分对比"></div>
       </div>
 
       <!-- Narrative -->
       <div class="narrative" id="narrative-text" aria-live="polite">
-        基于现状参数，苏州碳平衡得分为54分。古城24米限高令维持了低层建筑形态，运行能耗比高层建筑低约25%。绿地覆盖率40%提供了中等冷岛效应——六座园林在卫星热红外影像中呈现显著冷岛效应（降温0.1–4.3°C），网师园和艺圃因混合像元稀释LST不可检。慢行网络覆盖率45%的交通减排贡献有限，八园步行碳减排合计约14.61 tCO₂/yr。全部八座园林/绿地纳入推演，年碳汇合计约167.40 tCO₂。实时碳平衡指数受建筑高度、绿地覆盖、慢行替代与绿地保留状态共同影响。
+        基于现状参数，苏州低碳规划综合得分为54分。古城24米限高令维持了低层建筑形态，运行能耗比高层建筑低约25%。绿地覆盖率40%提供了中等冷岛效应——六座园林在卫星热红外影像中呈现显著冷岛效应（降温0.1–4.3°C），网师园和艺圃因混合像元稀释LST不可检。慢行网络覆盖率45%的交通减排贡献有限，八园步行碳减排合计约14.61 tCO₂/yr。全部八座园林/绿地纳入推演，年碳汇合计约167.40 tCO₂。低碳综合指数受建筑高度、绿地覆盖、慢行替代与绿地保留状态共同影响。
       </div>
 
       
@@ -1833,7 +1869,7 @@ details.section-collapsible .collapsible-body {
   <button class="panel-expand-tab panel-expand-tab-right" id="btn-expand-right" title="展开仪表盘" aria-label="展开右侧面板" style="right:0;border-radius:6px 0 0 6px;">◀</button>
 </div>
 
-<script src="app.js"></script>
+<script src="app.js?v=32"></script>
 <script>
 
 // ===== INLINED CRITICAL DATA (avoids file:// AJAX issues) =====

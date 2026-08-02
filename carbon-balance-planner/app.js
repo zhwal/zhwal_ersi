@@ -56,16 +56,16 @@
   };
 
   // --- State ---
-  var ASSET_VERSION = 'v19';
+  var ASSET_VERSION = 'v32';
   var state = {
     height: 24,
-    green: 38,
+    green: 40,
     walk: 45,
     activeScenario: 'baseline',
     scenarios: {
-      baseline: { height: 24, green: 38, walk: 45 },
+      baseline: { height: 24, green: 40, walk: 45 },
       garden:   { height: 18, green: 55, walk: 60 },
-      balance:  { height: 30, green: 45, walk: 50 }
+      balance:  { height: 30, green: 50, walk: 55 }
     },
     gardens: [],
     activeGardens: {},
@@ -96,7 +96,7 @@
     treeDensityEffect: 0.0173,
     walkSpeedMps: 1.2,
     walkRadiusBase: 800,
-    coolRefGreen: 38,
+    coolRefGreen: 40,
     coolDistanceDecay: 350   // 降温效应随距离衰减（m）
   };
 
@@ -104,8 +104,9 @@
   var W = { height: 0.45, green: 0.45, walk: 0.10 };
 
   function calcPath1Score(h) {
-    return Math.round(Math.max(0, Math.min(100, 100 - (h - 12) / 48 * 100)));
-  }
+  // 以18m为理想基准（苏州古城典型檐口高度），60m为最差
+  return Math.round(Math.max(0, Math.min(100, 100 - (h - 18) / 42 * 100)));
+}
 
   function calcPath2Score(g) {
     return Math.round(Math.max(0, Math.min(100, (g - 20) / 50 * 100)));
@@ -115,7 +116,35 @@
     return Math.round(Math.max(0, Math.min(100, (w - 20) / 70 * 100)));
   }
 
+  // 园林冷岛效应因子：已激活园林冷岛强度之和 / 全部园林冷岛强度之和
+  function getColdIslandFactor() {
+    var totalColdIsland = 0, activeColdIsland = 0;
+    state.gardens.forEach(function(garden) {
+      var ci = Math.abs(garden.cool_delta || 0);
+      totalColdIsland += ci;
+      if (state.activeGardens[garden.name]) activeColdIsland += ci;
+    });
+    return totalColdIsland > 0 ? activeColdIsland / totalColdIsland : 1;
+  }
+
   function calcTotalScore(h, g, w) {
+    var p1 = calcPath1Score(h);
+    var p2 = calcPath2Score(g);
+    var p3 = calcPath3Score(w);
+    // 冷岛效应×园林保留状态：全部保留=系数1，全部移除=系数0.85
+    var coldIslandFactor = getColdIslandFactor();
+    var p2Adjusted = Math.round(p2 * (0.85 + 0.15 * coldIslandFactor));
+    var activeCarbon = getActiveCarbonTotal();
+    var fullCarbon = getFullCarbonTotal();
+    var carbonFactor = fullCarbon > 0 ? (activeCarbon / fullCarbon) : 1;
+    // 园林保留比例影响综合得分：全部保留时系数=1，全部移除时系数=0.85
+    var carbonMultiplier = 0.85 + 0.15 * carbonFactor;
+    var total = Math.round((p1 * W.height + p2Adjusted * W.green + p3 * W.walk) * carbonMultiplier);
+    return { total: total, p1: p1, p2: p2Adjusted, p3: p3 };
+  }
+
+  // 固定场景得分（不计园林开关，用于情景对比图）
+  function calcFixedScore(h, g, w) {
     var p1 = calcPath1Score(h);
     var p2 = calcPath2Score(g);
     var p3 = calcPath3Score(w);
@@ -124,11 +153,11 @@
   }
 
   function getGrade(score) {
-    if (score >= 80) return { grade: 'A', text: 'A · 优秀', cls: 'grade-A' };
-    if (score >= 65) return { grade: 'B', text: 'B · 良好', cls: 'grade-B' };
-    if (score >= 50) return { grade: 'C', text: 'C · 一般', cls: 'grade-C' };
-    return { grade: 'D', text: 'D · 需改善', cls: 'grade-D' };
-  }
+  if (score >= 65) return { grade: 'A', text: 'A · 优秀', cls: 'grade-A' };
+  if (score >= 50) return { grade: 'B', text: 'B · 良好', cls: 'grade-B' };
+  if (score >= 35) return { grade: 'C', text: 'C · 一般', cls: 'grade-C' };
+  return { grade: 'D', text: 'D · 需改善', cls: 'grade-D' };
+}
 
   function getActiveCarbonTotal() {
     return state.gardens.reduce(function(sum, g) {
@@ -190,17 +219,17 @@
       parts.push('全部' + state.gardens.length + '座园林/绿地纳入推演，年碳汇合计约' + activeCarbon.toFixed(2) + ' tCO₂');
     }
 
-    parts.push('实时碳平衡指数' + balance + '，综合建筑高度、绿地覆盖、慢行替代与绿地保留状态计算');
+    parts.push('低碳综合指数' + balance + '，综合建筑高度、绿地覆盖、慢行替代与绿地保留状态计算');
 
-    if (total >= 80) {
-      parts.push('综合碳平衡得分' + total + '分，属于优秀水平，三条路径的协同效应显著。');
-    } else if (total >= 65) {
-      parts.push('综合碳平衡得分' + total + '分，还有优化空间，建议在保持建筑高度约束的同时，进一步提升绿地覆盖率。');
-    } else if (total >= 50) {
-      parts.push('综合碳平衡得分' + total + '分，处于一般水平，建议加强绿地建设和建筑高度管控。');
-    } else {
-      parts.push('综合碳平衡得分' + total + '分，需改善，建议收紧建筑高度约束并大幅提升绿地覆盖率。');
-    }
+    if (total >= 65) {
+    parts.push('低碳规划综合得分' + total + '分，属于优秀水平，三条路径的协同效应显著。');
+  } else if (total >= 50) {
+    parts.push('低碳规划综合得分' + total + '分，还有优化空间，建议在保持建筑高度约束的同时，进一步提升绿地覆盖率。');
+  } else if (total >= 35) {
+    parts.push('低碳规划综合得分' + total + '分，处于一般水平，建议加强绿地建设和建筑高度管控。');
+  } else {
+    parts.push('低碳规划综合得分' + total + '分，需改善，建议收紧建筑高度约束并大幅提升绿地覆盖率。');
+  }
 
     return parts.join('。');
   }
@@ -216,8 +245,8 @@
 
     scoreValue.innerHTML = result.total + '<span class="score-max">/100</span>';
     scoreValue.className = 'score-value';
-    if (result.total < 50) scoreValue.classList.add('danger');
-    else if (result.total < 65) scoreValue.classList.add('warning');
+    if (result.total < 35) scoreValue.classList.add('danger');
+  else if (result.total < 50) scoreValue.classList.add('warning');
 
     scoreGrade.textContent = grade.text;
     scoreGrade.className = 'score-grade ' + grade.cls;
@@ -229,9 +258,9 @@
     bar2.style.width = result.p2 + '%';
     bar3.style.width = result.p3 + '%';
 
-    path1Score.className = 'path-score' + (result.p1 < 50 ? ' danger' : result.p1 < 65 ? ' warning' : '');
-    path2Score.className = 'path-score' + (result.p2 < 50 ? ' danger' : result.p2 < 65 ? ' warning' : '');
-    path3Score.className = 'path-score' + (result.p3 < 50 ? ' danger' : result.p3 < 65 ? ' warning' : '');
+    path1Score.className = 'path-score' + (result.p1 < 35 ? ' danger' : result.p1 < 50 ? ' warning' : '');
+  path2Score.className = 'path-score' + (result.p2 < 35 ? ' danger' : result.p2 < 50 ? ' warning' : '');
+  path3Score.className = 'path-score' + (result.p3 < 35 ? ' danger' : result.p3 < 50 ? ' warning' : '');
 
     narrativeText.textContent = generateNarrative(state.height, state.green, state.walk, result);
 
@@ -239,7 +268,7 @@
     var fullCarbon = getFullCarbonTotal();
     carbonTotalEl.textContent = fullCarbon.toFixed(2) + ' tCO₂/yr';
     carbonRemovedEl.textContent = activeCarbon.toFixed(2) + ' tCO₂/yr';
-    // 顶部"园林绿地总碳汇"卡片应显示全部八园的理论总碳汇，不受移除状态影响
+    // 顶部"古典园林总碳汇"卡片应显示全部八园的理论总碳汇，不受移除状态影响
     carbonTotalCardEl.textContent = fullCarbon.toFixed(2) + ' tCO₂/yr';
     var delta = fullCarbon - activeCarbon;
     if (delta > 0.01) {
@@ -431,7 +460,7 @@
     if (gaugeEl && typeof echarts !== 'undefined') gaugeChart = echarts.init(gaugeEl);
     if (compareEl && typeof echarts !== 'undefined') compareChart = echarts.init(compareEl);
     updateGauge(54);
-    updateCompareChart(calcTotalScore(24, 38, 45));
+    updateCompareChart(calcTotalScore(24, 40, 45));
     window.addEventListener('resize', function() {
       if (gaugeChart) gaugeChart.resize();
       if (compareChart) compareChart.resize();
@@ -504,9 +533,10 @@
 
   function updateCompareChart(currentResult) {
     if (!compareChart) return;
-    var baseline = calcTotalScore(24, 38, 45);
-    var garden = calcTotalScore(18, 55, 60);
-    var balance = calcTotalScore(30, 45, 50);
+    // 固定场景使用calcFixedScore，不受园林开关影响
+    var baseline = calcFixedScore(24, 40, 45);
+    var garden = calcFixedScore(18, 55, 60);
+    var balance = calcFixedScore(30, 50, 55);
 
     var data = [
       { value: baseline.total, itemStyle: { color: '#8BA88A', borderRadius: [4,4,0,0] } },
@@ -525,7 +555,7 @@
       grid: { left: '6%', right: '6%', top: 12, bottom: 24 },
       xAxis: {
         type: 'category',
-        data: ['现状', '园林优先', '平衡发展', '当前'],
+        data: ['现状', '生态园林', '平衡发展', '当前'],
         axisLabel: { fontSize: 10, color: '#8A8070', fontFamily: 'BricolageGrotesque, sans-serif' },
         axisLine: { lineStyle: { color: '#D8D0C0' } },
         axisTick: { show: false }
@@ -687,8 +717,8 @@
               tiles: [
                 'https://t0.tianditu.gov.cn/vec_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=vec&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=a213949ecad632af1d729bdcdce04767',
                 'https://t1.tianditu.gov.cn/vec_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=vec&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=a213949ecad632af1d729bdcdce04767',
-                'https://t2.tianditu.gov.cn/vec_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=vec&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=a213949ecad632af1d729bdcdce04767',
-                'https://t3.tianditu.gov.cn/vec_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=vec&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=a213949ecad632af1d729bdcdce04767'
+                'https://t2.tianditu.gov.cn/vec_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=vec&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=fdca189eef5b2c96af2ccfa48ec0a61c',
+                'https://t3.tianditu.gov.cn/vec_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=vec&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=fdca189eef5b2c96af2ccfa48ec0a61c'
               ],
               tileSize: 256,
               attribution: '© <a href="https://www.tianditu.gov.cn" target="_blank">天地图</a>'
@@ -698,8 +728,8 @@
               tiles: [
                 'https://t0.tianditu.gov.cn/cva_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=cva&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=a213949ecad632af1d729bdcdce04767',
                 'https://t1.tianditu.gov.cn/cva_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=cva&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=a213949ecad632af1d729bdcdce04767',
-                'https://t2.tianditu.gov.cn/cva_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=cva&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=a213949ecad632af1d729bdcdce04767',
-                'https://t3.tianditu.gov.cn/cva_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=cva&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=a213949ecad632af1d729bdcdce04767'
+                'https://t2.tianditu.gov.cn/cva_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=cva&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=fdca189eef5b2c96af2ccfa48ec0a61c',
+                'https://t3.tianditu.gov.cn/cva_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=cva&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=fdca189eef5b2c96af2ccfa48ec0a61c'
               ],
               tileSize: 256
             }
@@ -792,7 +822,7 @@
       sourceData.oldCity = data; phase1Done(err, '古城边界');
     }, 12000);
     loadJSON(dataBasePath + 'gardens_carbon.json', function(err, data) {
-      sourceData.gardens = data; phase1Done(err, '园林绿地');
+      sourceData.gardens = data; phase1Done(err, '古典园林');
     }, 12000);
 
     // Phase 2: heavy data loaded progressively after map is shown
@@ -809,56 +839,58 @@
                 id: 'temperature-layer',
                 type: 'raster',
                 source: 'temperature-overlay',
-                paint: { 'raster-opacity': 0.72, 'raster-fade-duration': 0 }
+                paint: { 'raster-opacity': 0.25, 'raster-fade-duration': 0, 'raster-saturation': 0.55, 'raster-contrast': 0.55 }
               });
             }
+            // 确保古典园林图层始终置顶
+            if (map.getLayer('gardens-fill')) map.moveLayer('gardens-fill');
+            if (map.getLayer('gardens-line')) map.moveLayer('gardens-line');
             updateTemperatureLayer();
           }
         }
       }, 15000);
 
       // Load contour data (isotherm lines) - 坐标已在WGS84
-      loadJSON(dataBasePath + 'lst_contours_2degC.json', function(err, data) {
-        if (!err && data) {
-          sourceData.contours = data;
-          if (!map.getSource('contours')) {
-            addGeoJSONSource('contours', data);
-          }
-          if (!map.getLayer('temperature-contours')) {
-            map.addLayer({
-              id: 'temperature-contours',
-              type: 'line',
-              source: 'contours',
-              layout: { 'line-join': 'round', 'line-cap': 'round' },
-              paint: {
-                'line-color': [
-                  'interpolate', ['linear'], ['get', 't'],
-                  32, 'rgba(83,128,181,0.85)',
-                  36, 'rgba(120,168,195,0.80)',
-                  40, 'rgba(180,190,140,0.75)',
-                  44, 'rgba(230,195,90,0.75)',
-                  48, 'rgba(225,130,55,0.75)',
-                  52, 'rgba(215,65,42,0.80)',
-                  56, 'rgba(195,40,35,0.85)'
+      // 使用MapLibre内置URL加载，避免JSON.parse阻塞主线程
+      if (!map.getSource('contours')) {
+        map.addSource('contours', {
+          type: 'geojson',
+          data: dataBasePath + 'lst_contours_2degC.json?_cb=' + ASSET_VERSION
+        });
+      }
+      if (!map.getLayer('temperature-contours')) {
+        map.addLayer({
+          id: 'temperature-contours',
+          type: 'line',
+          source: 'contours',
+          layout: { 'line-join': 'round', 'line-cap': 'round' },
+          paint: {
+            'line-color': [
+              'interpolate', ['linear'], ['get', 't'],
+              32, '#3A6EA5',
+              36, '#5A8EB5',
+                  40, '#90B090',
+                  44, '#D4C840',
+                  48, '#E08030',
+                  52, '#D04028',
+                  56, '#B82820'
                 ],
                 'line-width': [
                   'interpolate', ['linear'], ['get', 't'],
-                  32, 1.8,
-                  36, 1.5,
-                  40, 1.2,
-                  44, 1.0,
-                  48, 0.8,
-                  52, 0.6,
-                  56, 0.5
+                  32, 2.8,
+                  36, 2.5,
+                  40, 2.0,
+                  44, 1.7,
+                  48, 1.4,
+                  52, 1.2,
+                  56, 1.0
                 ],
-                'line-opacity': 0.75
+                'line-opacity': 0.92
               }
             });
           }
           updateContourLayer();
           updateLayerVisibility();
-        }
-      }, 15000);
 
       // Load buildings: lite first, fallback to full if needed
       loadJSON(dataBasePath + 'suzhou_buildings_gusu_lite.json', function(err, data) {
@@ -911,25 +943,82 @@
     }
   }
 
+  // GCJ-02 → WGS-84 坐标转换（温度栅格bounds为GCJ-02，天地图底图需WGS-84）
+  // 使用迭代法求逆变换：先WGS84→GCJ-02，再反向偏移
+  function gcj02ToWgs84(lng, lat) {
+    var a = 6378245.0;
+    var ee = 0.00669342162296594323;
+    function _transformLat(x, y) {
+      var ret = -100.0 + 2.0 * x + 3.0 * y + 0.2 * y * y + 0.1 * x * y + 0.2 * Math.sqrt(Math.abs(x));
+      ret += (20.0 * Math.sin(6.0 * x * Math.PI) + 20.0 * Math.sin(2.0 * x * Math.PI)) * 2.0 / 3.0;
+      ret += (20.0 * Math.sin(y * Math.PI) + 40.0 * Math.sin(y / 3.0 * Math.PI)) * 2.0 / 3.0;
+      ret += (160.0 * Math.sin(y / 12.0 * Math.PI) + 320.0 * Math.sin(y * Math.PI / 30.0)) * 2.0 / 3.0;
+      return ret;
+    }
+    function _transformLng(x, y) {
+      var ret = 300.0 + x + 2.0 * y + 0.1 * x * x + 0.1 * x * y + 0.1 * Math.sqrt(Math.abs(x));
+      ret += (20.0 * Math.sin(6.0 * x * Math.PI) + 20.0 * Math.sin(2.0 * x * Math.PI)) * 2.0 / 3.0;
+      ret += (20.0 * Math.sin(x * Math.PI) + 40.0 * Math.sin(x / 3.0 * Math.PI)) * 2.0 / 3.0;
+      ret += (150.0 * Math.sin(x / 12.0 * Math.PI) + 300.0 * Math.sin(x / 30.0 * Math.PI)) * 2.0 / 3.0;
+      return ret;
+    }
+    function _delta(lon, lat) {
+      var dLat = _transformLat(lon - 105.0, lat - 35.0);
+      var dLng = _transformLng(lon - 105.0, lat - 35.0);
+      var radLat = lat / 180.0 * Math.PI;
+      var magic = Math.sin(radLat);
+      magic = 1 - ee * magic * magic;
+      var sqrtMagic = Math.sqrt(magic);
+      dLat = (dLat * 180.0) / ((a * (1 - ee)) / (magic * sqrtMagic) * Math.PI);
+      dLng = (dLng * 180.0) / (a / sqrtMagic * Math.cos(radLat) * Math.PI);
+      return [dLng, dLat];
+    }
+    // 逆变换：WGS84 = GCJ-02 - delta(GCJ-02)
+    var d = _delta(lng, lat);
+    return [lng - d[0], lat - d[1]];
+  }
+
   function addImageSource(name, url, bounds) {
     if (!map.getSource(name)) {
-      // 坐标已在WGS84（从EPSG:4549转换），无需GCJ-02偏移修正
+      // 温度栅格Bounds为GCJ-02，天地图底图需WGS-84；逆变换后补30m微调
+      var sw = gcj02ToWgs84(bounds.southWest[0], bounds.southWest[1]);
+      var ne = gcj02ToWgs84(bounds.northEast[0], bounds.northEast[1]);
+      var nw = gcj02ToWgs84(bounds.southWest[0], bounds.northEast[1]);
+      var se = gcj02ToWgs84(bounds.northEast[0], bounds.southWest[1]);
+      // 微调：补30m西南偏移（苏州纬度下 ≈ 0.00032°经度, 0.00027°纬度）
+      var FINE_LON = 0.00064;  // 累计西向60m
+      var FINE_LAT = 0.00194;  // 南向215m
+      sw[0] -= FINE_LON; ne[0] -= FINE_LON;
+      nw[0] -= FINE_LON; se[0] -= FINE_LON;
+      sw[1] -= FINE_LAT; ne[1] -= FINE_LAT;
+      nw[1] -= FINE_LAT; se[1] -= FINE_LAT;
       map.addSource(name, {
         type: 'image',
         url: url,
         coordinates: [
-          [bounds.southWest[0], bounds.northEast[1]],
-          [bounds.northEast[0], bounds.northEast[1]],
-          [bounds.northEast[0], bounds.southWest[1]],
-          [bounds.southWest[0], bounds.southWest[1]]
+          [nw[0], nw[1]],
+          [ne[0], ne[1]],
+          [se[0], se[1]],
+          [sw[0], sw[1]]
         ]
       });
     }
   }
 
   function buildAllLayers() {
-    // Boundary
+    // ============================================================
+    // Layer order (bottom → top): 底图 → 边界 → 古城轮廓 → 3D建筑
+    //   → 慢行网络 → 地表温度(25%透明) → 等温线 → 古典园林
+    // ============================================================
+
+    // --- Layer 1: Boundary (bottom) ---
     addGeoJSONSource('boundary', sourceData.boundary);
+    map.addLayer({
+      id: 'boundary-fill',
+      type: 'fill',
+      source: 'boundary',
+      paint: { 'fill-color': '#4A6741', 'fill-opacity': 0.05 }
+    });
     map.addLayer({
       id: 'boundary-line',
       type: 'line',
@@ -937,21 +1026,9 @@
       layout: { 'line-join': 'round', 'line-cap': 'round' },
       paint: { 'line-color': '#4A6741', 'line-width': 2.5, 'line-dasharray': [4, 3], 'line-opacity': 0.7 }
     });
-    map.addLayer({
-      id: 'boundary-fill',
-      type: 'fill',
-      source: 'boundary',
-      paint: { 'fill-color': '#4A6741', 'fill-opacity': 0.05 }
-    });
 
-    // Old city
+    // --- Layer 2: Old city (outline only, no fill) ---
     addGeoJSONSource('oldCity', sourceData.oldCity);
-    map.addLayer({
-      id: 'oldCity-fill',
-      type: 'fill',
-      source: 'oldCity',
-      paint: { 'fill-color': '#8B6E5A', 'fill-opacity': 0.12 }
-    });
     map.addLayer({
       id: 'oldCity-line',
       type: 'line',
@@ -960,73 +1037,30 @@
       paint: { 'line-color': '#8B6E5A', 'line-width': 2.5, 'line-dasharray': [4, 3], 'line-opacity': 0.8 }
     });
 
-    // Gardens - 坐标已在WGS84，无需转换（天地图底图使用CGCS2000≈WGS84）
-    state.gardens = sourceData.gardens.features.map(function(f) {
-      return {
-        name: f.properties.name,
-        area_ha: f.properties.area_ha,
-        area_m2: f.properties.area_m2,
-        carbon_ton: f.properties.carbon_ton,
-        npp_kgC_m2: f.properties.npp_kgC_m2,
-        world_heritage: f.properties.world_heritage,
-        lon: f.properties.lon,
-        lat: f.properties.lat,
-        coords: f.geometry.coordinates[0]
-      };
-    });
-    state.gardens.forEach(function(g) { state.activeGardens[g.name] = true; });
-    renderGardenToggles();
-    updateUI();
-
-    addGeoJSONSource('gardens', sourceData.gardens);
-    map.addLayer({
-      id: 'gardens-fill',
-      type: 'fill',
-      source: 'gardens',
-      paint: {
-        'fill-color': '#4A6741',
-        'fill-opacity': 0.55,
-        'fill-outline-color': '#1F2E1A'
-      }
-    });
-    map.addLayer({
-      id: 'gardens-line',
-      type: 'line',
-      source: 'gardens',
-      paint: { 'line-color': '#1F2E1A', 'line-width': 1.5, 'line-opacity': 0.9 }
-    });
-
-    // Click garden to open card
-    map.on('click', 'gardens-fill', function(e) {
-      if (!e.features || !e.features.length) return;
-      var name = e.features[0].properties.name;
-      var garden = state.gardens.find(function(g) { return g.name === name; });
-      if (garden) openGardenCard(garden);
-    });
-    map.on('mouseenter', 'gardens-fill', function() { map.getCanvas().style.cursor = 'pointer'; });
-    map.on('mouseleave', 'gardens-fill', function() { map.getCanvas().style.cursor = ''; });
-
-    // LST temperature raster overlay (continuous surface from inverted LST shapefile)
-    // If bounds are not ready yet, the layer will be created in loadDeferredData
-    if (sourceData.lstBounds) {
-      addImageSource('temperature-overlay', dataBasePath + 'lst_temperature.png?_cb=' + ASSET_VERSION, sourceData.lstBounds);
-      map.addLayer({
-        id: 'temperature-layer',
-        type: 'raster',
-        source: 'temperature-overlay',
-        paint: {
-          'raster-opacity': 0.72,
-          'raster-fade-duration': 0
-        }
-      });
-    }
-
-    // 3D Buildings: extruded polygons from building.shp Height field
-    // Use an empty placeholder if heavy building data is still loading
+    // --- Layer 3: 3D Buildings ---
     var buildingPlaceholder = sourceData.buildings || { type: 'FeatureCollection', features: [] };
     addGeoJSONSource('buildings', buildingPlaceholder);
 
-    // 古城内建筑（有spatialFactor）
+    // 14色渐变: 低→高 #FEF7D0 → #46053F
+    var buildingColorRamp = [
+      'interpolate', ['linear'], ['get', 'height'],
+      5,  '#FEF7D0',
+      8,  '#FAE6C4',
+      11, '#F6D8BA',
+      14, '#EFBFA7',
+      17, '#E8A494',
+      20, '#E38E84',
+      23, '#DD7C76',
+      24, '#CD5F65',
+      27, '#BD5160',
+      30, '#A23B59',
+      33, '#82264F',
+      36, '#711D49',
+      40, '#570E40',
+      43, '#46053F'
+    ];
+
+    // 古城内建筑
     map.addLayer({
       id: 'buildings-3d-inner',
       type: 'fill-extrusion',
@@ -1034,23 +1068,15 @@
       filter: ['==', ['get', 'inOldCity'], true],
       minzoom: 11,
       paint: {
-        'fill-extrusion-color': [
-          'interpolate', ['linear'], ['get', 'height'],
-          5, '#F5F0E8',
-          12, '#D4CFC4',
-          24, '#C4A882',
-          36, '#8B6E5A',
-          50, '#5A4A3A',
-          70, '#3A2E24'
-        ],
-        'fill-extrusion-height': ['*', ['get', 'height'], ['*', ['case', ['has', 'spatialFactor'], ['sqrt', ['get', 'spatialFactor']], 1.0], 2.0]],
+        'fill-extrusion-color': buildingColorRamp,
+        'fill-extrusion-height': ['get', 'height'],
         'fill-extrusion-base': 0,
         'fill-extrusion-opacity': 0.85,
         'fill-extrusion-vertical-gradient': true
       }
     });
 
-    // 古城外建筑（保持原始高度）
+    // 古城外建筑
     map.addLayer({
       id: 'buildings-3d-outer',
       type: 'fill-extrusion',
@@ -1058,23 +1084,14 @@
       filter: ['!=', ['get', 'inOldCity'], true],
       minzoom: 11,
       paint: {
-        'fill-extrusion-color': [
-          'interpolate', ['linear'], ['get', 'height'],
-          5, '#F5F0E8',
-          12, '#D4CFC4',
-          24, '#C4A882',
-          36, '#8B6E5A',
-          50, '#5A4A3A',
-          70, '#3A2E24'
-        ],
-        'fill-extrusion-height': ['*', ['get', 'height'], 2.0],
+        'fill-extrusion-color': buildingColorRamp,
+        'fill-extrusion-height': ['*', ['get', 'height'], 1.3],
         'fill-extrusion-base': 0,
         'fill-extrusion-opacity': 0.7,
         'fill-extrusion-vertical-gradient': true
       }
     });
 
-    // Hide buildings at low zoom to reduce GPU load, but respect user's layer toggle
     map.on('zoom', function() {
       var z = map.getZoom();
       var bVis = (state.layerVisible.buildings && z >= 11.5) ? 'visible' : 'none';
@@ -1086,8 +1103,7 @@
       }
     });
 
-    // Real road network base + walkable highlight
-    // Use placeholder if road data is still loading; will be updated in loadDeferredData
+    // --- Layer 4: Slow travel network ---
     var roadsPlaceholder = sourceData.roads || { type: 'FeatureCollection', features: [] };
     if (sourceData.roads) {
       sourceData.roads.features.forEach(function(f, i) {
@@ -1123,8 +1139,24 @@
       }
     });
 
-    // Temperature contours (isotherm lines)
-    // Contour data is loaded as GeoJSON from lst_contours_2degC.json
+    // --- Layer 5: Temperature raster (25% opacity) ---
+    // 使用预着色PNG + raster-hue-rotate实现色温动态调整
+    if (sourceData.lstBounds) {
+      addImageSource('temperature-overlay', dataBasePath + 'lst_temperature.png?_cb=' + ASSET_VERSION, sourceData.lstBounds);
+      map.addLayer({
+        id: 'temperature-layer',
+        type: 'raster',
+        source: 'temperature-overlay',
+        paint: {
+          'raster-opacity': 0.25,
+          'raster-fade-duration': 0,
+          'raster-saturation': 0.55,
+          'raster-contrast': 0.55
+        }
+      });
+    }
+
+    // --- Layer 6: Isotherm contours ---
     if (sourceData.contours) {
       addGeoJSONSource('contours', sourceData.contours);
       map.addLayer({
@@ -1135,28 +1167,73 @@
         paint: {
           'line-color': [
             'interpolate', ['linear'], ['get', 't'],
-            32, 'rgba(83,128,181,0.85)',
-            36, 'rgba(120,168,195,0.80)',
-            40, 'rgba(180,190,140,0.75)',
-            44, 'rgba(230,195,90,0.75)',
-            48, 'rgba(225,130,55,0.75)',
-            52, 'rgba(215,65,42,0.80)',
-            56, 'rgba(195,40,35,0.85)'
+            32, '#3A6EA5',
+            36, '#5A8EB5',
+            40, '#90B090',
+            44, '#D4C840',
+            48, '#E08030',
+            52, '#D04028',
+            56, '#B82820'
           ],
           'line-width': [
             'interpolate', ['linear'], ['get', 't'],
-            32, 1.8,
-            36, 1.5,
-            40, 1.2,
-            44, 1.0,
-            48, 0.8,
-            52, 0.6,
-            56, 0.5
+            32, 2.8,
+            36, 2.5,
+            40, 2.0,
+            44, 1.7,
+            48, 1.4,
+            52, 1.2,
+            56, 1.0
           ],
-          'line-opacity': 0.75
+          'line-opacity': 0.92
         }
       });
     }
+
+    // --- Layer 7: Gardens (top) ---
+    state.gardens = sourceData.gardens.features.map(function(f) {
+      return {
+        name: f.properties.name,
+        area_ha: f.properties.area_ha,
+        area_m2: f.properties.area_m2,
+        carbon_ton: f.properties.carbon_ton,
+        npp_kgC_m2: f.properties.npp_kgC_m2,
+        world_heritage: f.properties.world_heritage,
+        lon: f.properties.lon,
+        lat: f.properties.lat,
+        coords: f.geometry.coordinates[0]
+      };
+    });
+    state.gardens.forEach(function(g) { state.activeGardens[g.name] = true; });
+    renderGardenToggles();
+    updateUI();
+
+    addGeoJSONSource('gardens', sourceData.gardens);
+    map.addLayer({
+      id: 'gardens-fill',
+      type: 'fill',
+      source: 'gardens',
+      paint: {
+        'fill-color': '#4A6741',
+        'fill-opacity': 0.55,
+        'fill-outline-color': '#1F2E1A'
+      }
+    });
+    map.addLayer({
+      id: 'gardens-line',
+      type: 'line',
+      source: 'gardens',
+      paint: { 'line-color': '#1F2E1A', 'line-width': 1.5, 'line-opacity': 0.9 }
+    });
+
+    map.on('click', 'gardens-fill', function(e) {
+      if (!e.features || !e.features.length) return;
+      var name = e.features[0].properties.name;
+      var garden = state.gardens.find(function(g) { return g.name === name; });
+      if (garden) openGardenCard(garden);
+    });
+    map.on('mouseenter', 'gardens-fill', function() { map.getCanvas().style.cursor = 'pointer'; });
+    map.on('mouseleave', 'gardens-fill', function() { map.getCanvas().style.cursor = ''; });
 
     updateLayerVisibility();
     updateBuildings();
@@ -1205,7 +1282,7 @@
 
   function updateWalkNetwork() {
     if (!sourceData.roads || !map.getSource('roads-walk')) return;
-    var maxRadius = 400 + (state.walk / 90) * 1400; // 400–1800 m walking radius
+    var maxRadius = 400 + Math.pow(state.walk / 90, 1.8) * 1400;
     var activeGardens = state.gardens.filter(function(g) { return state.activeGardens[g.name]; });
 
     var walkFeatures = [];
@@ -1233,105 +1310,106 @@
 
 
   function updateContourLayer() {
-    // 等温线空间变化算法：绿地覆盖率影响等温线空间分布
+    // 等温线按温度阈值差异化响应绿地覆盖率 + 园林冷岛效应
+    // 绿地覆盖率↑ / 园林保留 → 低温等温线更明显，高温等温线消退
+    // 绿地覆盖率↓ / 园林移除 → 高温等温线更明显，低温等温线消退
     if (!map.getLayer('temperature-contours')) return;
     var g = state.green;
-    var baseline = 40.23;
-    var K = 7.40;
-    var tempDelta = K * (Math.log(1 + g / 100) - Math.log(1 + baseline / 100));
+    var baseline = 40;
+    var greenRatio = (g - baseline) / baseline;
 
-    var activeColdIntensity = 0;
-    var totalColdIntensity = 0;
-    if (typeof INLINE_GARDENS_POINTS !== 'undefined') {
-      INLINE_GARDENS_POINTS.forEach(function(gp) {
-        var ci = Math.abs(typeof gp.cool_delta === 'number' ? gp.cool_delta : 1.0);
-        totalColdIntensity += ci;
-        if (state.activeGardens[gp.name]) activeColdIntensity += ci;
-      });
-    }
-    var spatialRatio = totalColdIntensity > 0 ? activeColdIntensity / totalColdIntensity : 1;
+    // 园林冷岛效应：移除园林→冷岛消失→等温线应偏向高温
+    var totalColdIsland = 0, activeColdIsland = 0;
+    state.gardens.forEach(function(garden) {
+      var ci = Math.abs(garden.cool_delta || 0);
+      totalColdIsland += ci;
+      if (state.activeGardens[garden.name]) activeColdIsland += ci;
+    });
+    var coldIslandRatio = totalColdIsland > 0 ? activeColdIsland / totalColdIsland : 1;
+    // 冷岛比率越低(移除越多园林) → 效果等同于绿地覆盖率降低
+    var coldFactor = (coldIslandRatio - 1) * 0.6; // 范围: -0.6 ~ 0
+    var combinedRatio = greenRatio + coldFactor;
 
-    var opacity = 0.55 - tempDelta * 0.15 + (1 - spatialRatio) * 0.2;
-    opacity = Math.max(0.3, Math.min(0.9, opacity));
+    // 计算各温度阈值对应的线宽和透明度
+    // 绿地多→低温线加粗加亮，高温线变细变淡
+    // 绿地少→高温线加粗加亮，低温线变细变淡
+    var t32w = 2.8 * (1.0 + combinedRatio * 1.5);   // 32°C: 绿地多→更粗
+    var t36w = 2.5 * (1.0 + combinedRatio * 1.2);
+    var t40w = 2.0 * (1.0 + combinedRatio * 0.8);
+    var t44w = 1.7 * (1.0 - combinedRatio * 0.5);   // 中间温度基本不变
+    var t48w = 1.4 * (1.0 - combinedRatio * 1.0);
+    var t52w = 1.2 * (1.0 - combinedRatio * 1.3);
+    var t56w = 1.0 * (1.0 - combinedRatio * 1.5);   // 56°C: 绿地多→更细
 
-    var lineWidthMultiplier = 1.0 - tempDelta * 0.3;
-    lineWidthMultiplier = Math.max(0.5, Math.min(2.0, lineWidthMultiplier));
+    var t32o = 0.92 * (1.0 + combinedRatio * 0.8);  // 32°C: 绿地多→更亮
+    var t36o = 0.92 * (1.0 + combinedRatio * 0.6);
+    var t40o = 0.92 * (1.0 + combinedRatio * 0.3);
+    var t44o = 0.92;
+    var t48o = 0.92 * (1.0 - combinedRatio * 0.5);
+    var t52o = 0.92 * (1.0 - combinedRatio * 0.7);
+    var t56o = 0.92 * (1.0 - combinedRatio * 0.8);  // 56°C: 绿地多→更淡
+
+    // 钳制到合理范围
+    var clampW = function(v) { return Math.max(0.3, Math.min(5.0, v)); };
+    var clampO = function(v) { return Math.max(0.15, Math.min(1.0, v)); };
 
     map.setPaintProperty('temperature-contours', 'line-width', [
-      '*',
-      ['interpolate', ['linear'], ['get', 't'],
-        32, 1.8,
-        36, 1.5,
-        40, 1.2,
-        44, 1.0,
-        48, 0.8,
-        52, 0.6,
-        56, 0.5
-      ],
-      lineWidthMultiplier
+      'interpolate', ['linear'], ['get', 't'],
+      32, clampW(t32w), 36, clampW(t36w), 40, clampW(t40w),
+      44, clampW(t44w), 48, clampW(t48w), 52, clampW(t52w), 56, clampW(t56w)
     ]);
 
-    map.setPaintProperty('temperature-contours', 'line-opacity', opacity);
+    map.setPaintProperty('temperature-contours', 'line-opacity', [
+      'interpolate', ['linear'], ['get', 't'],
+      32, clampO(t32o), 36, clampO(t36o), 40, clampO(t40o),
+      44, clampO(t44o), 48, clampO(t48o), 52, clampO(t52o), 56, clampO(t56o)
+    ]);
   }
 
   function updateBuildings() {
     if (!map.getLayer('buildings-3d-inner')) return;
-    // 古城内建筑：高度 × spatialFactor^0.5 × 2.0（空间因子削弱版，核心区略高，边缘区略低）
-    // 古城外建筑：高度 × 2.0（纯视觉增强，无空间差异）
-    // 移除原来的 max(height, h×spatialFactor) 逻辑，避免放大矮建筑
+    // 高度约束滑块：统一缩放古城内所有建筑
+    // 基准24m → scaleFactor = state.height / 24
+    // 滑块调到12m → 所有建筑缩放到50%
+    // 滑块调到36m → 所有建筑放大到150%
+    var scaleFactor = state.height / 24;
     map.setPaintProperty('buildings-3d-inner', 'fill-extrusion-height', [
-      '*', ['get', 'height'], ['*', ['case', ['has', 'spatialFactor'], ['sqrt', ['get', 'spatialFactor']], 1.0], 2.0]
+      '*', ['get', 'height'], scaleFactor
     ]);
     map.setPaintProperty('buildings-3d-outer', 'fill-extrusion-height', [
-      '*', ['get', 'height'], 2.0
+      '*', ['get', 'height'], 1.3
     ]);
   }
 
   function updateTemperatureLayer() {
-    // 空间冷岛效应算法：基于距离衰减的冷却场模型
-    // 绿地覆盖率影响冷却半径和强度，园林开关影响空间分布
+    // 绿地覆盖率影响色温 + 园林冷岛效应
+    // 绿地覆盖率↓ → 偏红(升温), 绿地覆盖率↑ → 偏蓝(降温)
+    // 园林移除 → 冷岛消失 → 偏红(升温)
     if (!map.getLayer('temperature-layer')) return;
     var g = state.green;
-    var baseline = 40.23;
-    var K = 7.40;
-    var tempDelta = K * (Math.log(1 + g / 100) - Math.log(1 + baseline / 100));
+    var baseline = 40;
+    var greenRatio = (g - baseline) / baseline;
 
-    // 计算当前活跃园林的空间冷却强度
-    var activeColdIntensity = 0;
-    var totalColdIntensity = 0;
-    if (typeof INLINE_GARDENS_POINTS !== 'undefined') {
-      INLINE_GARDENS_POINTS.forEach(function(gp) {
-        var ci = Math.abs(typeof gp.cool_delta === 'number' ? gp.cool_delta : 1.0);
-        totalColdIntensity += ci;
-        if (state.activeGardens[gp.name]) activeColdIntensity += ci;
-      });
-    }
-    var spatialRatio = totalColdIntensity > 0 ? activeColdIntensity / totalColdIntensity : 1;
+    // 绿地覆盖率调节：反向（用户要求）
+    var hueRotate = greenRatio * 30;
 
-    // 绿地覆盖率越高→温度越低→对比度降低→红色减少（修复：不使用Math.abs）
-    var contrast = 0.45 + tempDelta * 0.55 + (1 - spatialRatio) * 0.3;
-    contrast = Math.max(0.15, Math.min(1.0, contrast));
+    // 园林冷岛效应：移除园林→升温
+    var totalColdIsland = 0, activeColdIsland = 0;
+    state.gardens.forEach(function(garden) {
+      var ci = Math.abs(garden.cool_delta || 0);
+      totalColdIsland += ci;
+      if (state.activeGardens[garden.name]) activeColdIsland += ci;
+    });
+    var coldIslandRatio = totalColdIsland > 0 ? activeColdIsland / totalColdIsland : 1;
+    // 冷岛比率越低(移除越多园林) → 越偏红
+    hueRotate += (1 - coldIslandRatio) * 25;
 
-    // 饱和度：绿地增加→颜色更柔和
-    var saturation = 0.5 - tempDelta * 0.3 + (1 - spatialRatio) * 0.2;
-    saturation = Math.max(0.1, Math.min(1.0, saturation));
+    hueRotate = Math.max(-35, Math.min(35, hueRotate));
 
-    // 亮度：冷却更多→冷区更亮
-    var brightnessMin = -tempDelta * 0.35 - (1 - spatialRatio) * 0.15;
-    brightnessMin = Math.max(-0.4, Math.min(0.2, brightnessMin));
-
-    var brightnessMax = 1.0 + tempDelta * 0.08 - (1 - spatialRatio) * 0.05;
-    brightnessMax = Math.max(0.65, Math.min(1.05, brightnessMax));
-
-    // 透明度：园林越多越不透明
-    var opacity = 0.55 + (g - 20) / 50 * 0.25 + spatialRatio * 0.05;
-    opacity = Math.max(0.35, Math.min(0.85, opacity));
-
-    map.setPaintProperty('temperature-layer', 'raster-contrast', contrast);
-    map.setPaintProperty('temperature-layer', 'raster-saturation', saturation);
-    map.setPaintProperty('temperature-layer', 'raster-brightness-max', brightnessMax);
-    map.setPaintProperty('temperature-layer', 'raster-brightness-min', brightnessMin);
-    map.setPaintProperty('temperature-layer', 'raster-opacity', opacity);
+    map.setPaintProperty('temperature-layer', 'raster-hue-rotate', hueRotate);
+    map.setPaintProperty('temperature-layer', 'raster-opacity', 0.25);
+    map.setPaintProperty('temperature-layer', 'raster-saturation', 0.55);
+    map.setPaintProperty('temperature-layer', 'raster-contrast', 0.55);
   }
 
   function updateGardenVisibility() {
@@ -1351,7 +1429,6 @@
     var layers = {
       'boundary-line': v.boundary,
       'boundary-fill': v.boundary,
-      'oldCity-fill': v.oldcity,
       'oldCity-line': v.oldcity,
       'gardens-fill': v.gardens,
       'gardens-line': v.gardens,
@@ -1480,7 +1557,7 @@
       if (kv.length === 2) params[kv[0]] = decodeURIComponent(kv[1]);
     });
     if (params.h) state.height = Math.max(12, Math.min(60, parseInt(params.h) || 24));
-    if (params.g) state.green = Math.max(20, Math.min(70, parseInt(params.g) || 38));
+    if (params.g) state.green = Math.max(20, Math.min(70, parseInt(params.g) || 40));
     if (params.w) state.walk = Math.max(20, Math.min(90, parseInt(params.w) || 45));
     if (params.removed) {
       var removedNames = params.removed.split(',');

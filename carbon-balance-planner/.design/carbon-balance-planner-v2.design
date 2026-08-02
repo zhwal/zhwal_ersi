@@ -1,0 +1,34 @@
+{
+  "data": [
+    {
+      "id": "page-carbon-balance-v2",
+      "title": "碳平衡规划师 · 苏州低碳未来交互推演",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1753896720000,
+      "canvasData": {
+        "x": 0,
+        "y": 0,
+        "group": 0,
+        "layoutSnapshot": {
+          "version": 1,
+          "contentHeight": 10287,
+          "viewportWidth": 1440,
+          "sourceHash": "fnv1a-c1908e78",
+          "measuredAt": 1785405437689
+        }
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/carbon-balance-v2.html",
+        "interactions": []
+      }
+    }
+  ],
+  "config": {
+    "autoLayout": true,
+    "deviceType": "desktop",
+    "projectName": "碳平衡规划师 v2",
+    "visualEditorEnabled": false,
+    "showEdge": false
+  }
+}

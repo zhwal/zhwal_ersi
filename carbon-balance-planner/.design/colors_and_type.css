@@ -1,0 +1,82 @@
+:root {
+  /* ===== Brand Prefix: cb (carbon-balance) ===== */
+
+  /* Surface */
+  --cb-background: #F5F0E8;
+  --cb-card: #FFFFFF;
+  --cb-muted: #F0EBE2;
+  --cb-popover: #FFFFFF;
+
+  /* Text */
+  --cb-foreground: #2A241E;
+  --cb-card-foreground: #2A241E;
+  --cb-muted-foreground: #8A8070;
+  --cb-popover-foreground: #2A241E;
+
+  /* Primary */
+  --cb-primary: #4A6741;
+  --cb-primary-foreground: #FFFFFF;
+
+  /* Secondary */
+  --cb-secondary: #F0EBE2;
+  --cb-secondary-foreground: #2A241E;
+
+  /* Accent */
+  --cb-accent: #5B8C5A;
+  --cb-accent-foreground: #FFFFFF;
+
+  /* Border & Input */
+  --cb-border: #D8D0C0;
+  --cb-input: #D8D0C0;
+  --cb-ring: #4A6741;
+
+  /* Destructive */
+  --cb-destructive: #B8453A;
+  --cb-destructive-foreground: #FFFFFF;
+
+  /* ===== Extended Palette ===== */
+  --cb-accent-dark: #1F2E1A;
+  --cb-accent-light: #8BA88A;
+  --cb-warm: #8B6E5A;
+  --cb-warm-light: #C4A882;
+  --cb-celadon: #B0C4A8;
+  --cb-stone: #D4CFC4;
+  --cb-warn: #C47A3A;
+  --cb-cold: #4A90A4;
+  --cb-cold-light: #A8D0E0;
+  --cb-emission: #8B5A5A;
+  --cb-emission-light: #D4A8A8;
+  --cb-balance: #5B8C5A;
+  --cb-balance-low: #C47A3A;
+  --cb-balance-bad: #B8453A;
+
+  /* ===== Typography ===== */
+  --cb-font-sans: 'Noto Sans CJK SC', 'Microsoft YaHei', 'PingFang SC', ui-sans-serif, sans-serif;
+  --cb-font-serif: 'Noto Serif SC', 'Source Han Serif SC', 'SimSun', ui-serif, serif;
+  --cb-font-mono: 'JetBrains Mono', 'Consolas', 'Courier New', monospace;
+  --cb-font-display: 'Noto Sans CJK SC', 'Microsoft YaHei', sans-serif;
+
+  /* ===== Radius ===== */
+  --cb-radius-sm: 6px;
+  --cb-radius-md: 10px;
+  --cb-radius-lg: 16px;
+  --cb-radius-xl: 24px;
+
+  /* ===== Shadows ===== */
+  --cb-shadow-sm: 0 1px 2px rgba(31, 46, 26, 0.05);
+  --cb-shadow-md: 0 4px 12px rgba(31, 46, 26, 0.08);
+  --cb-shadow-lg: 0 8px 24px rgba(31, 46, 26, 0.12);
+  --cb-shadow-xl: 0 16px 40px rgba(31, 46, 26, 0.16);
+
+  /* ===== Spacing ===== */
+  --cb-spacing: 4px;
+
+  /* ===== Transitions ===== */
+  --cb-transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --cb-transition: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  --cb-transition-slow: 500ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ===== Panel Sizing ===== */
+  --cb-panel-w: 340px;
+  --cb-dash-w: 330px;
+}
