@@ -56,7 +56,7 @@
   };
 
   // --- State ---
-  var ASSET_VERSION = 'v32';
+  var ASSET_VERSION = 'v33';
   var state = {
     height: 24,
     green: 40,
@@ -99,6 +99,22 @@
     coolRefGreen: 40,
     coolDistanceDecay: 350   // 降温效应随距离衰减（m）
   };
+
+  // --- 冷岛缓冲区生成 ---
+  // 为每个园林生成圆形冷岛影响区多边形（半径约350m）
+  function generateColdIslandBuffer(lon, lat, radiusM) {
+    var numPoints = 36;
+    var coords = [];
+    var cosLat = Math.cos(lat * Math.PI / 180);
+    for (var i = 0; i < numPoints; i++) {
+      var angle = (i / numPoints) * Math.PI * 2;
+      var dx = radiusM * Math.cos(angle);
+      var dy = radiusM * Math.sin(angle);
+      coords.push([lon + dx / (111320 * cosLat), lat + dy / 111320]);
+    }
+    coords.push(coords[0]); // 闭合环
+    return { type: 'Polygon', coordinates: [coords] };
+  }
 
   // --- Carbon Balance Calculation ---
   var W = { height: 0.45, green: 0.45, walk: 0.10 };
@@ -843,6 +859,7 @@
               });
             }
             // 确保古典园林图层始终置顶
+            if (map.getLayer('cold-island-overlay')) map.moveLayer('cold-island-overlay', 'gardens-fill');
             if (map.getLayer('gardens-fill')) map.moveLayer('gardens-fill');
             if (map.getLayer('gardens-line')) map.moveLayer('gardens-line');
             updateTemperatureLayer();
@@ -1226,6 +1243,31 @@
       paint: { 'line-color': '#1F2E1A', 'line-width': 1.5, 'line-opacity': 0.9 }
     });
 
+    // --- 冷岛叠加层：园林关闭时在对应位置显示暖色覆盖 ---
+    // 生成每个园林的冷岛缓冲区多边形
+    state.coldIslandBuffers = {};
+    state.gardens.forEach(function(g) {
+      var radius = g.cool_delta > 0 ? LIT.coolDistanceDecay : 0;
+      state.coldIslandBuffers[g.name] = generateColdIslandBuffer(g.lon, g.lat, radius);
+    });
+    // 初始全部园林开启，冷岛叠加层为空
+    map.addSource('cold-island-overlay-source', {
+      type: 'geojson',
+      data: { type: 'FeatureCollection', features: [] }
+    });
+    map.addLayer({
+      id: 'cold-island-overlay',
+      type: 'fill',
+      source: 'cold-island-overlay-source',
+      paint: {
+        'fill-color': '#E05030',
+        'fill-opacity': 0.28,
+        'fill-outline-color': 'transparent'
+      }
+    });
+    // 确保冷岛覆盖层在温度图层之上、园林填充层之下
+    if (map.getLayer('gardens-fill')) map.moveLayer('cold-island-overlay', 'gardens-fill');
+
     map.on('click', 'gardens-fill', function(e) {
       if (!e.features || !e.features.length) return;
       var name = e.features[0].properties.name;
@@ -1422,6 +1464,27 @@
     map.setPaintProperty('gardens-fill', 'fill-color', ['match', ['get', 'name'], ...fillColors, '#B8B2A8']);
     map.setPaintProperty('gardens-fill', 'fill-opacity', ['match', ['get', 'name'], ...fillOpacities, 0.18]);
     map.setPaintProperty('gardens-line', 'line-color', ['match', ['get', 'name'], ...strokeColors, '#9A958C']);
+
+    // 冷岛叠加层：关闭的园林 → 显示暖色覆盖
+    updateColdIslandOverlay();
+  }
+
+  function updateColdIslandOverlay() {
+    if (!map.getSource('cold-island-overlay-source')) return;
+    var features = [];
+    state.gardens.forEach(function(g) {
+      if (!state.activeGardens[g.name] && g.cool_delta > 0 && state.coldIslandBuffers[g.name]) {
+        features.push({
+          type: 'Feature',
+          properties: { name: g.name, cool_delta: g.cool_delta },
+          geometry: state.coldIslandBuffers[g.name]
+        });
+      }
+    });
+    map.getSource('cold-island-overlay-source').setData({
+      type: 'FeatureCollection',
+      features: features
+    });
   }
 
   function updateLayerVisibility() {
@@ -1434,6 +1497,7 @@
       'gardens-line': v.gardens,
       'temperature-layer': v.temperature,
       'temperature-contours': v.contours,
+      'cold-island-overlay': v.temperature,
       'roads-base': v.walk,
       'roads-walk': v.walk
     };
