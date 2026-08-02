@@ -56,7 +56,7 @@
   };
 
   // --- State ---
-  var ASSET_VERSION = 'v33';
+  var ASSET_VERSION = 'v34';
   var state = {
     height: 24,
     green: 40,
@@ -1216,6 +1216,7 @@
         carbon_ton: f.properties.carbon_ton,
         npp_kgC_m2: f.properties.npp_kgC_m2,
         world_heritage: f.properties.world_heritage,
+        cool_delta: f.properties.cool_delta,
         lon: f.properties.lon,
         lat: f.properties.lat,
         coords: f.geometry.coordinates[0]
@@ -1244,11 +1245,18 @@
     });
 
     // --- 冷岛叠加层：园林关闭时在对应位置显示暖色覆盖 ---
-    // 生成每个园林的冷岛缓冲区多边形
+    // 生成每个园林的冷岛缓冲区多边形（半径和颜色深度正比于冷岛强度）
+    var maxCoolDelta = Math.max.apply(null, state.gardens.map(function(g) { return Math.max(0, g.cool_delta || 0); }));
     state.coldIslandBuffers = {};
     state.gardens.forEach(function(g) {
-      var radius = g.cool_delta > 0 ? LIT.coolDistanceDecay : 0;
-      state.coldIslandBuffers[g.name] = generateColdIslandBuffer(g.lon, g.lat, radius);
+      var cd = Math.max(0, g.cool_delta || 0);
+      if (cd > 0 && maxCoolDelta > 0) {
+        var ratio = cd / maxCoolDelta;
+        var radius = LIT.coolDistanceDecay * (0.4 + 0.6 * ratio);
+        state.coldIslandBuffers[g.name] = generateColdIslandBuffer(g.lon, g.lat, radius);
+      } else {
+        state.coldIslandBuffers[g.name] = null;
+      }
     });
     // 初始全部园林开启，冷岛叠加层为空
     map.addSource('cold-island-overlay-source', {
@@ -1261,7 +1269,7 @@
       source: 'cold-island-overlay-source',
       paint: {
         'fill-color': '#E05030',
-        'fill-opacity': 0.28,
+        'fill-opacity': ['*', 0.28, ['/', ['get', 'cool_delta'], maxCoolDelta || 1]],
         'fill-outline-color': 'transparent'
       }
     });
