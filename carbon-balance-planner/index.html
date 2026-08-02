@@ -886,6 +886,140 @@ details.section-collapsible .collapsible-body {
   background: var(--accent);
   color: #fff;
 }
+
+/* ===== 新手指引 ===== */
+.tour-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9990;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+.tour-overlay.active { opacity: 1; pointer-events: auto; }
+
+.tour-spotlight {
+  position: fixed;
+  z-index: 9991;
+  pointer-events: none;
+  border-radius: 10px;
+  box-shadow: 0 0 0 9999px rgba(0,0,0,0.5);
+  transition: all 0.35s cubic-bezier(0.4,0,0.2,1);
+}
+
+.tour-tooltip {
+  position: fixed;
+  z-index: 9999;
+  background: #fff;
+  border-radius: 12px;
+  padding: 1.5rem 1.6rem;
+  max-width: 280px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  font-family: var(--font);
+  line-height: 1.7;
+}
+.tour-tooltip.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.tour-tooltip-title {
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  font-weight: 700;
+  color: #354030;
+  margin-bottom: 0.5rem;
+}
+.tour-tooltip-desc {
+  font-size: 0.8rem;
+  color: var(--ink2);
+  margin-bottom: 1rem;
+}
+.tour-tooltip-arrow {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: #fff;
+  transform: rotate(45deg);
+}
+.tour-tooltip-arrow.top { bottom: -5px; left: 50%; margin-left: -5px; }
+.tour-tooltip-arrow.bottom { top: -5px; left: 50%; margin-left: -5px; }
+.tour-tooltip-arrow.left { right: -5px; top: 50%; margin-top: -5px; }
+.tour-tooltip-arrow.right { left: -5px; top: 50%; margin-top: -5px; }
+
+.tour-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.tour-dots {
+  display: flex;
+  gap: 6px;
+}
+.tour-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--rule);
+  transition: all 0.3s ease;
+}
+.tour-dot.active { background: var(--accent); width: 20px; border-radius: 4px; }
+
+.tour-btn {
+  font-family: var(--font);
+  font-size: 0.78rem;
+  padding: 0.4rem 0.9rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+  font-weight: 600;
+}
+.tour-btn-skip {
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+.tour-btn-skip:hover { color: var(--ink); }
+.tour-btn-next {
+  background: var(--accent);
+  color: #fff;
+}
+.tour-btn-next:hover { background: #354030; }
+.tour-btn-done {
+  background: linear-gradient(135deg, #354030, #404A38);
+  color: #E8E5D8;
+  padding: 0.5rem 1.2rem;
+}
+.tour-btn-done:hover { opacity: 0.9; }
+
+.tour-help-btn {
+  position: absolute;
+  top: 50%;
+  right: 2.2rem;
+  transform: translateY(-50%);
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.3);
+  color: #E8E5D8;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  line-height: 1;
+  padding: 0;
+  font-family: var(--font-heading);
+}
+.tour-help-btn:hover { background: rgba(255,255,255,0.3); }
+
 @media (max-width: 900px) {
   .legend-control {
     top: 0.5rem;
@@ -1496,6 +1630,7 @@ details.section-collapsible .collapsible-body {
       <h1>碳平衡规划师</h1>
       <p class="tagline">拖动滑块，规划你的低碳苏州</p>
       <button class="panel-collapse-btn" id="btn-collapse-left" title="收起面板" aria-label="收起左侧面板">◀</button>
+      <button class="tour-help-btn" id="btn-tour-help" title="新手指引" aria-label="新手指引">?</button>
     </div>
 
     <div class="panel-body">
@@ -1862,6 +1997,211 @@ var INLINE_GARDENS_POINTS = [
   { name: "艺圃", cool_delta: -0.1 },
   { name: "耦园", cool_delta: -1.8 }
 ];
+
+// ===== 新手指引系统 =====
+(function() {
+  'use strict';
+  var STORAGE_KEY = 'carbon_balance_tour_done';
+  var currentStep = 0;
+
+  var steps = [
+    {
+      target: '.panel-body',
+      title: '调整低碳参数',
+      desc: '拖动三个滑块，调整建筑高度约束、绿地覆盖率和慢行网络覆盖率，实时推演苏州低碳规划的综合得分。',
+      position: 'right'
+    },
+    {
+      target: '#map-container',
+      title: '空间数据可视化',
+      desc: '地图展示苏州古城建筑高度、地表温度、园林分布和慢行路网，点击右上角图例可切换图层显示。',
+      position: 'bottom'
+    },
+    {
+      target: '#garden-toggle-group',
+      title: '园林保留与移除',
+      desc: '点击开关可保留或移除古典园林。移除园林会减少碳汇，削弱局部冷岛效应，影响综合得分。',
+      position: 'right'
+    },
+    {
+      target: '.score-section',
+      title: '低碳规划得分',
+      desc: '综合建筑高度、绿地覆盖、慢行替代与园林保留状态，计算低碳规划得分（A-D）和碳平衡指数。',
+      position: 'left'
+    }
+  ];
+
+  function createTourDOM() {
+    var overlay = document.createElement('div');
+    overlay.className = 'tour-overlay';
+    overlay.id = 'tour-overlay';
+
+    var spotlight = document.createElement('div');
+    spotlight.className = 'tour-spotlight';
+    spotlight.id = 'tour-spotlight';
+
+    var tooltip = document.createElement('div');
+    tooltip.className = 'tour-tooltip';
+    tooltip.id = 'tour-tooltip';
+    tooltip.innerHTML = '<div class="tour-tooltip-arrow" id="tour-arrow"></div>' +
+      '<div class="tour-tooltip-title" id="tour-title"></div>' +
+      '<div class="tour-tooltip-desc" id="tour-desc"></div>' +
+      '<div class="tour-footer">' +
+        '<div class="tour-dots" id="tour-dots"></div>' +
+        '<div style="display:flex;gap:0.5rem;align-items:center;">' +
+          '<button class="tour-btn tour-btn-skip" id="tour-btn-skip">跳过</button>' +
+          '<button class="tour-btn tour-btn-next" id="tour-btn-next">下一步</button>' +
+        '</div>' +
+      '</div>';
+
+    document.body.appendChild(overlay);
+    document.body.appendChild(spotlight);
+    document.body.appendChild(tooltip);
+  }
+
+  function updateSpotlight(targetEl) {
+    var spotlight = document.getElementById('tour-spotlight');
+    if (!targetEl || !spotlight) return;
+    var rect = targetEl.getBoundingClientRect();
+    var pad = 6;
+    spotlight.style.left = (rect.left - pad) + 'px';
+    spotlight.style.top = (rect.top - pad) + 'px';
+    spotlight.style.width = (rect.width + pad * 2) + 'px';
+    spotlight.style.height = (rect.height + pad * 2) + 'px';
+  }
+
+  function positionTooltip(targetEl, preferredPos) {
+    var tooltip = document.getElementById('tour-tooltip');
+    var arrow = document.getElementById('tour-arrow');
+    if (!targetEl || !tooltip) return;
+
+    var rect = targetEl.getBoundingClientRect();
+    var tw = tooltip.offsetWidth || 280;
+    var th = tooltip.offsetHeight || 160;
+    var gap = 16;
+    var vw = window.innerWidth;
+    var vh = window.innerHeight;
+
+    var arrowDir = 'bottom';
+    var left, top;
+
+    var positions = [preferredPos, 'bottom', 'right', 'top', 'left'];
+    for (var i = 0; i < positions.length; i++) {
+      var pos = positions[i];
+      if (pos === 'bottom') {
+        top = rect.bottom + gap;
+        left = rect.left + rect.width / 2 - tw / 2;
+        if (top + th < vh - 20 && left > 10 && left + tw < vw - 10) { arrowDir = 'top'; break; }
+      } else if (pos === 'top') {
+        top = rect.top - th - gap;
+        left = rect.left + rect.width / 2 - tw / 2;
+        if (top > 10 && left > 10 && left + tw < vw - 10) { arrowDir = 'bottom'; break; }
+      } else if (pos === 'right') {
+        left = rect.right + gap;
+        top = rect.top + rect.height / 2 - th / 2;
+        if (left + tw < vw - 10 && top > 10 && top + th < vh - 20) { arrowDir = 'left'; break; }
+      } else if (pos === 'left') {
+        left = rect.left - tw - gap;
+        top = rect.top + rect.height / 2 - th / 2;
+        if (left > 10 && top > 10 && top + th < vh - 20) { arrowDir = 'right'; break; }
+      }
+    }
+
+    left = Math.max(10, Math.min(left, vw - tw - 10));
+    top = Math.max(10, Math.min(top, vh - th - 10));
+
+    tooltip.style.left = left + 'px';
+    tooltip.style.top = top + 'px';
+
+    arrow.className = 'tour-tooltip-arrow ' + arrowDir;
+  }
+
+  function showStep(index) {
+    var step = steps[index];
+    var targetEl = document.querySelector(step.target);
+    if (!targetEl) return;
+
+    updateSpotlight(targetEl);
+    positionTooltip(targetEl, step.position);
+
+    document.getElementById('tour-title').textContent = step.title;
+    document.getElementById('tour-desc').textContent = step.desc;
+
+    var dotsHtml = '';
+    for (var i = 0; i < steps.length; i++) {
+      dotsHtml += '<div class="tour-dot' + (i === index ? ' active' : '') + '"></div>';
+    }
+    document.getElementById('tour-dots').innerHTML = dotsHtml;
+
+    var btnNext = document.getElementById('tour-btn-next');
+    if (index === steps.length - 1) {
+      btnNext.textContent = '开始使用';
+      btnNext.className = 'tour-btn tour-btn-done';
+    } else {
+      btnNext.textContent = '下一步';
+      btnNext.className = 'tour-btn tour-btn-next';
+    }
+
+    document.getElementById('tour-tooltip').classList.add('visible');
+  }
+
+  function startTour() {
+    currentStep = 0;
+    document.getElementById('tour-overlay').classList.add('active');
+    showStep(0);
+  }
+
+  function endTour() {
+    document.getElementById('tour-overlay').classList.remove('active');
+    document.getElementById('tour-tooltip').classList.remove('visible');
+    document.getElementById('tour-spotlight').style.width = '0';
+    document.getElementById('tour-spotlight').style.height = '0';
+    try { localStorage.setItem(STORAGE_KEY, '1'); } catch(e) {}
+  }
+
+  function nextStep() {
+    currentStep++;
+    if (currentStep >= steps.length) {
+      endTour();
+      return;
+    }
+    showStep(currentStep);
+  }
+
+  createTourDOM();
+
+  document.getElementById('tour-btn-next').addEventListener('click', nextStep);
+  document.getElementById('tour-btn-skip').addEventListener('click', endTour);
+  document.getElementById('tour-overlay').addEventListener('click', function(e) {
+    if (e.target === this) nextStep();
+  });
+
+  document.getElementById('btn-tour-help').addEventListener('click', function() {
+    startTour();
+  });
+
+  var hasVisited = false;
+  try { hasVisited = localStorage.getItem(STORAGE_KEY) === '1'; } catch(e) {}
+  if (!hasVisited) {
+    var checkMapReady = setInterval(function() {
+      if (window.carbonApp && window.carbonApp.state && window.carbonApp.state.mapReady) {
+        clearInterval(checkMapReady);
+        setTimeout(startTour, 800);
+      }
+    }, 300);
+    setTimeout(function() { clearInterval(checkMapReady); }, 5000);
+  }
+
+  var tourResizeTimer;
+  window.addEventListener('resize', function() {
+    clearTimeout(tourResizeTimer);
+    tourResizeTimer = setTimeout(function() {
+      if (document.getElementById('tour-overlay').classList.contains('active')) {
+        showStep(currentStep);
+      }
+    }, 200);
+  });
+})();
 </script>
 </body>
 </html>
