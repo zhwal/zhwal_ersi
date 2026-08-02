@@ -56,7 +56,7 @@
   };
 
   // --- State ---
-  var ASSET_VERSION = 'v35';
+  var ASSET_VERSION = 'v37';
   var state = {
     height: 24,
     green: 40,
@@ -845,9 +845,9 @@
                 paint: { 'raster-opacity': 0.25, 'raster-fade-duration': 0, 'raster-saturation': 0.55, 'raster-contrast': 0.55 }
               });
             }
-            // 确保古典园林图层始终置顶
-            if (map.getLayer('cold-island-overlay')) map.moveLayer('cold-island-overlay', 'gardens-fill');
+            // 确保古典园林图层始终置顶，冷岛叠加层在园林填充之上
             if (map.getLayer('gardens-fill')) map.moveLayer('gardens-fill');
+            if (map.getLayer('cold-island-overlay')) map.moveLayer('cold-island-overlay', 'gardens-line');
             if (map.getLayer('gardens-line')) map.moveLayer('gardens-line');
             updateTemperatureLayer();
           }
@@ -1231,7 +1231,7 @@
       paint: { 'line-color': '#1F2E1A', 'line-width': 1.5, 'line-opacity': 0.9 }
     });
 
-    // --- 冷岛叠加层：园林关闭时显示暖色热力扩散（circle + blur） ---
+    // --- 冷岛叠加层：园林关闭时显示暖色热力扩散（heatmap 自然融合） ---
     var maxCoolDelta = Math.max.apply(null, state.gardens.map(function(g) { return Math.max(0, g.cool_delta || 0); }));
     state.coldIslandCenters = {};
     state.gardens.forEach(function(g) {
@@ -1249,22 +1249,30 @@
     });
     map.addLayer({
       id: 'cold-island-overlay',
-      type: 'circle',
+      type: 'heatmap',
       source: 'cold-island-overlay-source',
       paint: {
-        'circle-color': '#E88040',
-        'circle-opacity': ['*', 0.12, ['/', ['get', 'cool_delta'], maxCoolDelta || 1]],
-        'circle-radius': ['interpolate', ['linear'], ['zoom'],
-          10, ['*', 1.5, ['get', 'cool_delta']],
-          12, ['*', 3, ['get', 'cool_delta']],
-          15, ['*', 8, ['get', 'cool_delta']]
+        // 固定像素半径，不随缩放变化
+        'heatmap-radius': 100,
+        // 权重按冷岛强度归一化
+        'heatmap-weight': ['/', ['get', 'cool_delta'], maxCoolDelta || 1],
+        // 强度适中
+        'heatmap-intensity': 0.35,
+        // 从透明到暖橙红的平滑渐变，与温度图层暖色区域融合
+        'heatmap-color': [
+          'interpolate', ['linear'], ['heatmap-density'],
+          0,    'rgba(255,180,130,0)',
+          0.25, 'rgba(255,160,90,0.08)',
+          0.5,  'rgba(245,120,50,0.22)',
+          0.7,  'rgba(230,80,30,0.38)',
+          0.85, 'rgba(210,55,18,0.5)',
+          1,    'rgba(190,40,10,0.6)'
         ],
-        'circle-blur': 0.85,
-        'circle-stroke-width': 0
+        'heatmap-opacity': 0.65
       }
     });
-    // 确保冷岛覆盖层在温度图层之上、园林填充层之下
-    if (map.getLayer('gardens-fill')) map.moveLayer('cold-island-overlay', 'gardens-fill');
+    // 确保冷岛覆盖层在园林填充层之上（避免被灰化多边形遮挡）、园林边界线之下
+    if (map.getLayer('gardens-line')) map.moveLayer('cold-island-overlay', 'gardens-line');
 
     map.on('click', 'gardens-fill', function(e) {
       if (!e.features || !e.features.length) return;
