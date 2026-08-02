@@ -154,9 +154,9 @@
   }
 
   function getGrade(score) {
-  if (score >= 65) return { grade: 'A', text: 'A · 优秀', cls: 'grade-A' };
-  if (score >= 50) return { grade: 'B', text: 'B · 良好', cls: 'grade-B' };
-  if (score >= 35) return { grade: 'C', text: 'C · 一般', cls: 'grade-C' };
+  if (score >= 85) return { grade: 'A', text: 'A · 优秀', cls: 'grade-A' };
+  if (score >= 65) return { grade: 'B', text: 'B · 良好', cls: 'grade-B' };
+  if (score >= 45) return { grade: 'C', text: 'C · 一般', cls: 'grade-C' };
   return { grade: 'D', text: 'D · 需改善', cls: 'grade-D' };
 }
 
