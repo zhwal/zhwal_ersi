@@ -56,7 +56,7 @@
   };
 
   // --- State ---
-  var ASSET_VERSION = 'v37';
+  var ASSET_VERSION = 'v38';
   var state = {
     height: 24,
     green: 40,
@@ -845,9 +845,8 @@
                 paint: { 'raster-opacity': 0.25, 'raster-fade-duration': 0, 'raster-saturation': 0.55, 'raster-contrast': 0.55 }
               });
             }
-            // 确保古典园林图层始终置顶，冷岛叠加层在园林填充之上
+            // 确保古典园林图层始终置顶
             if (map.getLayer('gardens-fill')) map.moveLayer('gardens-fill');
-            if (map.getLayer('cold-island-overlay')) map.moveLayer('cold-island-overlay', 'gardens-line');
             if (map.getLayer('gardens-line')) map.moveLayer('gardens-line');
             updateTemperatureLayer();
           }
@@ -1231,49 +1230,6 @@
       paint: { 'line-color': '#1F2E1A', 'line-width': 1.5, 'line-opacity': 0.9 }
     });
 
-    // --- 冷岛叠加层：园林关闭时显示暖色热力扩散（heatmap 自然融合） ---
-    var maxCoolDelta = Math.max.apply(null, state.gardens.map(function(g) { return Math.max(0, g.cool_delta || 0); }));
-    state.coldIslandCenters = {};
-    state.gardens.forEach(function(g) {
-      var cd = Math.max(0, g.cool_delta || 0);
-      if (cd > 0 && maxCoolDelta > 0) {
-        state.coldIslandCenters[g.name] = { lon: g.lon, lat: g.lat, cool_delta: cd };
-      } else {
-        state.coldIslandCenters[g.name] = null;
-      }
-    });
-    // 初始全部园林开启，冷岛叠加层为空
-    map.addSource('cold-island-overlay-source', {
-      type: 'geojson',
-      data: { type: 'FeatureCollection', features: [] }
-    });
-    map.addLayer({
-      id: 'cold-island-overlay',
-      type: 'heatmap',
-      source: 'cold-island-overlay-source',
-      paint: {
-        // 固定像素半径，不随缩放变化
-        'heatmap-radius': 100,
-        // 权重按冷岛强度归一化
-        'heatmap-weight': ['/', ['get', 'cool_delta'], maxCoolDelta || 1],
-        // 强度适中
-        'heatmap-intensity': 0.35,
-        // 从透明到暖橙红的平滑渐变，与温度图层暖色区域融合
-        'heatmap-color': [
-          'interpolate', ['linear'], ['heatmap-density'],
-          0,    'rgba(255,180,130,0)',
-          0.25, 'rgba(255,160,90,0.08)',
-          0.5,  'rgba(245,120,50,0.22)',
-          0.7,  'rgba(230,80,30,0.38)',
-          0.85, 'rgba(210,55,18,0.5)',
-          1,    'rgba(190,40,10,0.6)'
-        ],
-        'heatmap-opacity': 0.65
-      }
-    });
-    // 确保冷岛覆盖层在园林填充层之上（避免被灰化多边形遮挡）、园林边界线之下
-    if (map.getLayer('gardens-line')) map.moveLayer('cold-island-overlay', 'gardens-line');
-
     map.on('click', 'gardens-fill', function(e) {
       if (!e.features || !e.features.length) return;
       var name = e.features[0].properties.name;
@@ -1430,21 +1386,33 @@
   }
 
   function updateTemperatureLayer() {
-    // 绿地覆盖率影响色温（全局渐变）
+    // 绿地覆盖率 + 园林冷岛效应 联合影响全局色温
     // 绿地覆盖率↓ → 偏红(升温), 绿地覆盖率↑ → 偏蓝(降温)
-    // 园林冷岛效应已改用局部 circle 叠加层，不再影响全局色温
+    // 园林关闭 → 冷岛消失 → 温度图层整体偏暖
     if (!map.getLayer('temperature-layer')) return;
     var g = state.green;
     var baseline = 40;
     var greenRatio = (g - baseline) / baseline;
 
-    var hueRotate = greenRatio * 30;
+    // 园林冷岛效应因子：0=全部关闭, 1=全部开启
+    var coldIslandFactor = getColdIslandFactor();
+    // 冷岛损失带来的升温效果：0(无损失) → 1(全部损失)
+    var warmFactor = 1 - coldIslandFactor;
+
+    // 色相偏移：绿地效果 + 冷岛损失效果
+    var hueRotate = greenRatio * 30 + warmFactor * 22;
     hueRotate = Math.max(-35, Math.min(35, hueRotate));
 
+    // 饱和度：冷岛损失越多，暖色越饱和
+    var saturation = 0.55 + warmFactor * 0.15;
+
+    // 对比度：冷岛损失越多，对比度越高
+    var contrast = 0.55 + warmFactor * 0.1;
+
     map.setPaintProperty('temperature-layer', 'raster-hue-rotate', hueRotate);
-    map.setPaintProperty('temperature-layer', 'raster-opacity', 0.25);
-    map.setPaintProperty('temperature-layer', 'raster-saturation', 0.55);
-    map.setPaintProperty('temperature-layer', 'raster-contrast', 0.55);
+    map.setPaintProperty('temperature-layer', 'raster-opacity', 0.25 + warmFactor * 0.08);
+    map.setPaintProperty('temperature-layer', 'raster-saturation', saturation);
+    map.setPaintProperty('temperature-layer', 'raster-contrast', contrast);
   }
 
   function updateGardenVisibility() {
@@ -1457,28 +1425,6 @@
     map.setPaintProperty('gardens-fill', 'fill-color', ['match', ['get', 'name'], ...fillColors, '#B8B2A8']);
     map.setPaintProperty('gardens-fill', 'fill-opacity', ['match', ['get', 'name'], ...fillOpacities, 0.18]);
     map.setPaintProperty('gardens-line', 'line-color', ['match', ['get', 'name'], ...strokeColors, '#9A958C']);
-
-    // 冷岛叠加层：关闭的园林 → 显示暖色覆盖
-    updateColdIslandOverlay();
-  }
-
-  function updateColdIslandOverlay() {
-    if (!map.getSource('cold-island-overlay-source')) return;
-    var features = [];
-    state.gardens.forEach(function(g) {
-      if (!state.activeGardens[g.name] && state.coldIslandCenters[g.name]) {
-        var c = state.coldIslandCenters[g.name];
-        features.push({
-          type: 'Feature',
-          properties: { name: g.name, cool_delta: c.cool_delta },
-          geometry: { type: 'Point', coordinates: [c.lon, c.lat] }
-        });
-      }
-    });
-    map.getSource('cold-island-overlay-source').setData({
-      type: 'FeatureCollection',
-      features: features
-    });
   }
 
   function updateLayerVisibility() {
@@ -1491,7 +1437,6 @@
       'gardens-line': v.gardens,
       'temperature-layer': v.temperature,
       'temperature-contours': v.contours,
-      'cold-island-overlay': v.temperature,
       'roads-base': v.walk,
       'roads-walk': v.walk
     };
