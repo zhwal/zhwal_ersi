@@ -902,8 +902,12 @@
     }
   }
 
-  // GCJ-02 → WGS-84 坐标转换（温度栅格bounds为GCJ-02，天地图底图需WGS-84）
-  // 使用迭代法求逆变换：先WGS84→GCJ-02，再反向偏移
+  // 园林步行碳减排数据 (kg/yr)
+  var GARDEN_WALK_AVOID = {
+    '留园': 4451, '环秀山庄': 1999, '网师园': 1817, '沧浪亭': 1640,
+    '狮子林': 1435, '耦园': 1107, '拙政园': 1086, '艺圃': 1075
+  };
+  var WALK_AVOID_TOTAL = 14611;
   function gcj02ToWgs84(lng, lat) {
     var a = 6378245.0;
     var ee = 0.00669342162296594323;
@@ -1127,6 +1131,7 @@
         cool_delta: f.properties.cool_delta,
         lon: f.properties.lon,
         lat: f.properties.lat,
+        walk_avoid_kg: GARDEN_WALK_AVOID[f.properties.name] || 0,
         coords: f.geometry.coordinates[0]
       };
     });
@@ -1134,14 +1139,16 @@
     renderGardenToggles();
     updateUI();
 
-    addGeoJSONSource('gardens', sourceData.gardens);
+    if (!map.getSource('gardens')) {
+      map.addSource('gardens', { type: 'geojson', data: sourceData.gardens, generateId: true });
+    }
     map.addLayer({
       id: 'gardens-fill',
       type: 'fill',
       source: 'gardens',
       paint: {
-        'fill-color': '#4A6741',
-        'fill-opacity': 0.55,
+        'fill-color': ['case', ['boolean', ['feature-state', 'hover'], false], '#7AB060', '#4A6741'],
+        'fill-opacity': ['case', ['boolean', ['feature-state', 'hover'], false], 0.85, 0.55],
         'fill-outline-color': '#1F2E1A'
       }
     });
@@ -1191,8 +1198,16 @@
       var garden = state.gardens.find(function(g) { return g.name === name; });
       if (garden) openGardenCard(garden);
     });
-    map.on('mouseenter', 'gardens-fill', function() { map.getCanvas().style.cursor = 'pointer'; });
-    map.on('mouseleave', 'gardens-fill', function() { map.getCanvas().style.cursor = ''; });
+    map.on('mouseenter', 'gardens-fill', function(e) {
+      map.getCanvas().style.cursor = 'pointer';
+      if (e.features && e.features.length > 0) {
+        map.setFeatureState({ source: 'gardens', id: e.features[0].id }, { hover: true });
+      }
+    });
+    map.on('mouseleave', 'gardens-fill', function() {
+      map.getCanvas().style.cursor = '';
+      map.removeFeatureState({ source: 'gardens' });
+    });
 
     updateLayerVisibility();
     updateBuildings();
@@ -1306,8 +1321,8 @@
     var fillOpacities = names.map(function(n) { return [n, state.activeGardens[n] ? 0.55 : 0.18]; }).flat();
     var strokeColors = names.map(function(n) { return [n, state.activeGardens[n] ? '#1F2E1A' : '#9A958C']; }).flat();
 
-    map.setPaintProperty('gardens-fill', 'fill-color', ['match', ['get', 'name'], ...fillColors, '#B8B2A8']);
-    map.setPaintProperty('gardens-fill', 'fill-opacity', ['match', ['get', 'name'], ...fillOpacities, 0.18]);
+    map.setPaintProperty('gardens-fill', 'fill-color', ['case', ['boolean', ['feature-state', 'hover'], false], '#7AB060', ['match', ['get', 'name'], ...fillColors, '#B8B2A8']]);
+    map.setPaintProperty('gardens-fill', 'fill-opacity', ['case', ['boolean', ['feature-state', 'hover'], false], 0.85, ['match', ['get', 'name'], ...fillOpacities, 0.18]]);
     map.setPaintProperty('gardens-line', 'line-color', ['match', ['get', 'name'], ...strokeColors, '#9A958C']);
 
     // 冷岛叠加层：关闭的园林 → 局部暖色光晕
@@ -1427,6 +1442,7 @@
     $('#garden-card-name').textContent = garden.name;
     $('#garden-card-area').textContent = garden.area_ha.toFixed(2) + ' ha';
     $('#garden-card-carbon').textContent = garden.carbon_ton.toFixed(2) + ' tCO₂/yr';
+    $('#garden-card-walk-avoid').textContent = (garden.walk_avoid_kg || 0).toLocaleString() + ' kg/yr';
     $('#garden-card-wh').textContent = garden.world_heritage === '是' ? '是' : '否';
     $('#garden-card-npp').textContent = garden.npp_kgC_m2.toFixed(3) + ' kgC/m²';
     updateGardenCardStatus(garden);
