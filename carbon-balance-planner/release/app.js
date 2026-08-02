@@ -56,7 +56,7 @@
   };
 
   // --- State ---
-  var ASSET_VERSION = 'v40';
+  var ASSET_VERSION = 'v41';
   var state = {
     height: 24,
     green: 40,
@@ -1253,9 +1253,9 @@
       paint: {
         'circle-color': '#E87030',
         // 极低不透明度，按冷岛强度缩放
-        'circle-opacity': ['*', 0.25, ['/', ['get', 'cool_delta'], maxCoolDelta || 1]],
+        'circle-opacity': ['*', 0.4, ['/', ['get', 'cool_delta'], maxCoolDelta || 1]],
         // 固定大半径，不随缩放变化
-        'circle-radius': 150,
+        'circle-radius': 180,
         // blur=1.0 = 纯高斯模糊，完全无边缘
         'circle-blur': 1.0,
         'circle-stroke-width': 0
