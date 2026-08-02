@@ -847,6 +847,7 @@
             if (map.getLayer('cold-island-overlay')) map.moveLayer('cold-island-overlay', 'gardens-line');
             if (map.getLayer('gardens-line')) map.moveLayer('gardens-line');
             updateTemperatureLayer();
+            updateLayerVisibility();
           }
         }
       }, 15000);
