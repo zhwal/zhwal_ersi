@@ -56,7 +56,7 @@
   };
 
   // --- State ---
-  var ASSET_VERSION = 'v34';
+  var ASSET_VERSION = 'v35';
   var state = {
     height: 24,
     green: 40,
@@ -101,20 +101,7 @@
   };
 
   // --- 冷岛缓冲区生成 ---
-  // 为每个园林生成圆形冷岛影响区多边形（半径约350m）
-  function generateColdIslandBuffer(lon, lat, radiusM) {
-    var numPoints = 36;
-    var coords = [];
-    var cosLat = Math.cos(lat * Math.PI / 180);
-    for (var i = 0; i < numPoints; i++) {
-      var angle = (i / numPoints) * Math.PI * 2;
-      var dx = radiusM * Math.cos(angle);
-      var dy = radiusM * Math.sin(angle);
-      coords.push([lon + dx / (111320 * cosLat), lat + dy / 111320]);
-    }
-    coords.push(coords[0]); // 闭合环
-    return { type: 'Polygon', coordinates: [coords] };
-  }
+  // 为每个园林计算冷岛影响半径（正比于cool_delta）
 
   // --- Carbon Balance Calculation ---
   var W = { height: 0.45, green: 0.45, walk: 0.10 };
@@ -1244,18 +1231,15 @@
       paint: { 'line-color': '#1F2E1A', 'line-width': 1.5, 'line-opacity': 0.9 }
     });
 
-    // --- 冷岛叠加层：园林关闭时在对应位置显示暖色覆盖 ---
-    // 生成每个园林的冷岛缓冲区多边形（半径和颜色深度正比于冷岛强度）
+    // --- 冷岛叠加层：园林关闭时显示暖色热力扩散（circle + blur） ---
     var maxCoolDelta = Math.max.apply(null, state.gardens.map(function(g) { return Math.max(0, g.cool_delta || 0); }));
-    state.coldIslandBuffers = {};
+    state.coldIslandCenters = {};
     state.gardens.forEach(function(g) {
       var cd = Math.max(0, g.cool_delta || 0);
       if (cd > 0 && maxCoolDelta > 0) {
-        var ratio = cd / maxCoolDelta;
-        var radius = LIT.coolDistanceDecay * (0.4 + 0.6 * ratio);
-        state.coldIslandBuffers[g.name] = generateColdIslandBuffer(g.lon, g.lat, radius);
+        state.coldIslandCenters[g.name] = { lon: g.lon, lat: g.lat, cool_delta: cd };
       } else {
-        state.coldIslandBuffers[g.name] = null;
+        state.coldIslandCenters[g.name] = null;
       }
     });
     // 初始全部园林开启，冷岛叠加层为空
@@ -1265,12 +1249,18 @@
     });
     map.addLayer({
       id: 'cold-island-overlay',
-      type: 'fill',
+      type: 'circle',
       source: 'cold-island-overlay-source',
       paint: {
-        'fill-color': '#E05030',
-        'fill-opacity': ['*', 0.28, ['/', ['get', 'cool_delta'], maxCoolDelta || 1]],
-        'fill-outline-color': 'transparent'
+        'circle-color': '#E88040',
+        'circle-opacity': ['*', 0.12, ['/', ['get', 'cool_delta'], maxCoolDelta || 1]],
+        'circle-radius': ['interpolate', ['linear'], ['zoom'],
+          10, ['*', 1.5, ['get', 'cool_delta']],
+          12, ['*', 3, ['get', 'cool_delta']],
+          15, ['*', 8, ['get', 'cool_delta']]
+        ],
+        'circle-blur': 0.85,
+        'circle-stroke-width': 0
       }
     });
     // 确保冷岛覆盖层在温度图层之上、园林填充层之下
@@ -1432,28 +1422,15 @@
   }
 
   function updateTemperatureLayer() {
-    // 绿地覆盖率影响色温 + 园林冷岛效应
+    // 绿地覆盖率影响色温（全局渐变）
     // 绿地覆盖率↓ → 偏红(升温), 绿地覆盖率↑ → 偏蓝(降温)
-    // 园林移除 → 冷岛消失 → 偏红(升温)
+    // 园林冷岛效应已改用局部 circle 叠加层，不再影响全局色温
     if (!map.getLayer('temperature-layer')) return;
     var g = state.green;
     var baseline = 40;
     var greenRatio = (g - baseline) / baseline;
 
-    // 绿地覆盖率调节：反向（用户要求）
     var hueRotate = greenRatio * 30;
-
-    // 园林冷岛效应：移除园林→升温
-    var totalColdIsland = 0, activeColdIsland = 0;
-    state.gardens.forEach(function(garden) {
-      var ci = Math.abs(garden.cool_delta || 0);
-      totalColdIsland += ci;
-      if (state.activeGardens[garden.name]) activeColdIsland += ci;
-    });
-    var coldIslandRatio = totalColdIsland > 0 ? activeColdIsland / totalColdIsland : 1;
-    // 冷岛比率越低(移除越多园林) → 越偏红
-    hueRotate += (1 - coldIslandRatio) * 25;
-
     hueRotate = Math.max(-35, Math.min(35, hueRotate));
 
     map.setPaintProperty('temperature-layer', 'raster-hue-rotate', hueRotate);
@@ -1481,11 +1458,12 @@
     if (!map.getSource('cold-island-overlay-source')) return;
     var features = [];
     state.gardens.forEach(function(g) {
-      if (!state.activeGardens[g.name] && g.cool_delta > 0 && state.coldIslandBuffers[g.name]) {
+      if (!state.activeGardens[g.name] && state.coldIslandCenters[g.name]) {
+        var c = state.coldIslandCenters[g.name];
         features.push({
           type: 'Feature',
-          properties: { name: g.name, cool_delta: g.cool_delta },
-          geometry: state.coldIslandBuffers[g.name]
+          properties: { name: g.name, cool_delta: c.cool_delta },
+          geometry: { type: 'Point', coordinates: [c.lon, c.lat] }
         });
       }
     });
