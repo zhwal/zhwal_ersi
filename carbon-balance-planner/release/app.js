@@ -833,7 +833,7 @@
           sourceData.lstBounds = data;
           state.dataLoaded.temperature = true;
           if (!map.getSource('temperature-overlay')) {
-            addImageSource('temperature-overlay', dataBasePath + 'lst_temperature.png?_cb=' + ASSET_VERSION, data);
+            addImageSource('temperature-overlay', dataBasePath + 'lst_temperature.webp?_cb=' + ASSET_VERSION, data);
             if (!map.getLayer('temperature-layer')) {
               map.addLayer({
                 id: 'temperature-layer',
