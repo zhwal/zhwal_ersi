@@ -1106,7 +1106,7 @@
     // --- Layer 5: Temperature raster (25% opacity) ---
     // 使用预着色PNG + raster-hue-rotate实现色温动态调整
     if (sourceData.lstBounds) {
-      addImageSource('temperature-overlay', dataBasePath + 'lst_temperature.png?_cb=' + ASSET_VERSION, sourceData.lstBounds);
+      addImageSource('temperature-overlay', dataBasePath + 'lst_temperature.webp?_cb=' + ASSET_VERSION, sourceData.lstBounds);
       map.addLayer({
         id: 'temperature-layer',
         type: 'raster',
