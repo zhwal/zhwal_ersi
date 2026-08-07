@@ -1622,6 +1622,49 @@ details.section-collapsible .collapsible-body {
   pointer-events: auto;
 }
 
+/* ===== Layer Loading Toast ===== */
+.layer-toast {
+  position: fixed;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  background: rgba(53,64,48,0.95);
+  color: #E8E5D8;
+  padding: 0.8rem 1.5rem;
+  border-radius: 8px;
+  font-family: var(--font);
+  font-size: 0.85rem;
+  font-weight: 600;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  max-width: 90vw;
+}
+.layer-toast.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+.layer-toast .layer-toast-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(232,229,216,0.35);
+  border-top-color: #E8E5D8;
+  border-radius: 50%;
+  animation: layer-toast-spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+.layer-toast.error { background: rgba(122,74,58,0.95); }
+.layer-toast.success { background: rgba(74,103,65,0.95); }
+@keyframes layer-toast-spin {
+  to { transform: rotate(360deg); }
+}
+
 /* ===== Print Styles ===== */
 @media print {
   .app { display: block; height: auto; }
@@ -2012,6 +2055,15 @@ details.section-collapsible .collapsible-body {
   toast.className = 'tour-toast';
   toast.id = 'tour-toast';
   toast.textContent = '新手指引已收起，可随时点击顶部的 ? 按钮重新查看';
+  document.body.appendChild(toast);
+})();
+
+// Layer loading toast element
+(function() {
+  var toast = document.createElement('div');
+  toast.className = 'layer-toast';
+  toast.id = 'layer-toast';
+  toast.innerHTML = '<span class="layer-toast-spinner"></span><span class="layer-toast-text"></span>';
   document.body.appendChild(toast);
 })();
 

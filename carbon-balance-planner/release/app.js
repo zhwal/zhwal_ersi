@@ -851,6 +851,29 @@
     }
   }
 
+  // 图层加载 toast 提示
+  var layerToastTimer = null;
+  function showLayerToast(msg, type, duration) {
+    var el = document.getElementById('layer-toast');
+    if (!el) return;
+    var text = el.querySelector('.layer-toast-text');
+    var spinner = el.querySelector('.layer-toast-spinner');
+    if (text) text.textContent = msg;
+    if (spinner) spinner.style.display = (type === 'loading') ? '' : 'none';
+    el.className = 'layer-toast' + (type && type !== 'loading' ? ' ' + type : '');
+    el.classList.add('visible');
+    if (layerToastTimer) clearTimeout(layerToastTimer);
+    if (type !== 'loading') {
+      layerToastTimer = setTimeout(function() {
+        el.classList.remove('visible');
+      }, duration || 4000);
+    }
+  }
+  function hideLayerToast() {
+    var el = document.getElementById('layer-toast');
+    if (el) el.classList.remove('visible');
+  }
+
   // 懒加载：3D 建筑数据（9.6MB）仅在用户开启图层时加载，避免初次进入卡顿
   var buildingsLoading = false;
   function ensureBuildingsLoaded(cb) {
@@ -858,6 +881,7 @@
     if (state.dataLoaded.buildings) return cb();
     if (buildingsLoading) return; // 已在加载中
     buildingsLoading = true;
+    showLayerToast('正在加载3D建筑图层…', 'loading');
     loadJSON(dataBasePath + 'suzhou_buildings_gusu_lite.json', function(err, data) {
       if (!err && data) {
         sourceData.buildings = data;
@@ -866,6 +890,7 @@
           map.getSource('buildings').setData(data);
         }
         updateBuildings();
+        showLayerToast('3D建筑图层加载完成', 'success', 2500);
         cb();
       } else {
         // Fallback to full 3D dataset
@@ -875,6 +900,9 @@
             state.dataLoaded.buildings = true;
             if (map.getSource('buildings')) map.getSource('buildings').setData(data2);
             updateBuildings();
+            showLayerToast('3D建筑图层加载完成', 'success', 2500);
+          } else {
+            showLayerToast('3D建筑图层加载失败，请开启VPN代理后重试', 'error', 6000);
           }
           cb();
         }, 45000);
@@ -887,6 +915,7 @@
   function ensureTemperatureLoaded() {
     if (sourceData.lstBounds || tempLoading) return;
     tempLoading = true;
+    showLayerToast('正在加载地表温度图层…', 'loading');
     loadJSON(dataBasePath + 'lst_bounds.json', function(err, data) {
       if (!err && data) {
         sourceData.lstBounds = data;
@@ -906,6 +935,9 @@
           if (map.getLayer('gardens-line')) map.moveLayer('gardens-line');
           updateTemperatureLayer();
         }
+        showLayerToast('地表温度图层加载完成', 'success', 2500);
+      } else {
+        showLayerToast('地表温度图层加载失败，请开启VPN代理后重试', 'error', 6000);
       }
       updateLayerVisibility();
     }, 15000);
