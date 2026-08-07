@@ -379,9 +379,16 @@
     if (!sw) return;
     sw.addEventListener('change', function() {
       state.layerVisible[key] = sw.checked;
-      // 按需懒加载：开启建筑/温度图层时即时加载对应重量级数据
-      if (sw.checked && key === 'buildings') ensureBuildingsLoaded();
-      if (sw.checked && key === 'temperature') ensureTemperatureLoaded();
+      // 取消勾选：若对应图层正在加载中，立即隐藏加载提示
+      if (!sw.checked) {
+        if (key === 'buildings') cancelBuildingsLoad();
+        if (key === 'temperature') cancelTemperatureLoad();
+        hideLayerToast();
+      } else {
+        // 按需懒加载：开启建筑/温度图层时即时加载对应重量级数据
+        if (key === 'buildings') ensureBuildingsLoaded();
+        if (key === 'temperature') ensureTemperatureLoaded();
+      }
       updateLayerVisibility();
     });
   });
@@ -852,7 +859,9 @@
   }
 
   // 图层加载 toast 提示
-  var layerToastTimer = null;
+  var layerToastTimer = null;      // 自动隐藏计时器
+  var layerLoadCancel = null;      // 当前加载的取消回调
+  var layerLoadToastTag = null;    // 当前提示对应的加载标识(如 'buildings'/'temperature')
   function showLayerToast(msg, type, duration) {
     var el = document.getElementById('layer-toast');
     if (!el) return;
@@ -872,6 +881,59 @@
   function hideLayerToast() {
     var el = document.getElementById('layer-toast');
     if (el) el.classList.remove('visible');
+    if (layerToastTimer) clearTimeout(layerToastTimer);
+    layerToastTimer = null;
+  }
+  // 加载超时两段式提示：先提示建议开启VPN，再倒计时并最终超时
+  function startLoadTimeout(tag, onFinalTimeout) {
+    var remain = 10;
+    var cancelled = false;
+    var timer = null;
+    var firstTimer = null;
+    function cancel() {
+      cancelled = true;
+      if (timer) clearInterval(timer);
+      if (firstTimer) clearTimeout(firstTimer);
+      if (layerLoadCancel === cancelFn) layerLoadCancel = null;
+      if (layerLoadToastTag === tag) layerLoadToastTag = null;
+    }
+    function cancelFn() { cancel(); }
+    // 第二阶段倒计时
+    function countdown() {
+      showLayerToast('加载时间过长，建议开启VPN代理后重试。倒计时 ' + remain + ' 秒后将超时…', 'loading');
+      timer = setInterval(function() {
+        if (cancelled) return;
+        remain--;
+        if (remain <= 0) {
+          clearInterval(timer);
+          if (!cancelled && !layerCancelled(tag)) {
+            onFinalTimeout();
+          }
+          layerLoadCancel = null;
+          layerLoadToastTag = null;
+        } else {
+          showLayerToast('加载时间过长，建议开启VPN代理后重试。倒计时 ' + remain + ' 秒后将超时…', 'loading');
+        }
+      }, 1000);
+    }
+    // 第一阶段：5秒后提示建议开启VPN
+    firstTimer = setTimeout(function() {
+      if (cancelled) return;
+      countdown();
+    }, 5000);
+    layerLoadCancel = cancelFn;
+    layerLoadToastTag = tag;
+    return cancelFn;
+  }
+  function layerCancelled(tag) {
+    // 若用户已取消该加载或切换了加载，则视为取消
+    return layerLoadToastTag !== tag;
+  }
+  function cancelBuildingsLoad() {
+    if (layerLoadToastTag === 'buildings' && layerLoadCancel) layerLoadCancel();
+  }
+  function cancelTemperatureLoad() {
+    if (layerLoadToastTag === 'temperature' && layerLoadCancel) layerLoadCancel();
   }
 
   // 懒加载：3D 建筑数据（9.6MB）仅在用户开启图层时加载，避免初次进入卡顿
@@ -882,6 +944,26 @@
     if (buildingsLoading) return; // 已在加载中
     buildingsLoading = true;
     showLayerToast('正在加载3D建筑图层…', 'loading');
+    var cancelTimeout = startLoadTimeout('buildings', function() {
+      buildingsLoading = false;
+      showLayerToast('3D建筑图层加载超时，请开启VPN代理后重试', 'error', 6000);
+    });
+    function finishOk() {
+      if (layerLoadToastTag === 'buildings') {
+        if (layerLoadCancel) layerLoadCancel();
+        layerLoadCancel = null;
+        layerLoadToastTag = null;
+      }
+      buildingsLoading = false;
+      showLayerToast('3D建筑图层加载完成', 'success', 2500);
+      cb();
+    }
+    function finishErr(msg) {
+      if (layerLoadCancel) layerLoadCancel();
+      buildingsLoading = false;
+      showLayerToast(msg, 'error', 6000);
+      cb();
+    }
     loadJSON(dataBasePath + 'suzhou_buildings_gusu_lite.json', function(err, data) {
       if (!err && data) {
         sourceData.buildings = data;
@@ -890,8 +972,8 @@
           map.getSource('buildings').setData(data);
         }
         updateBuildings();
-        showLayerToast('3D建筑图层加载完成', 'success', 2500);
-        cb();
+        // 等地图重新渲染完成后再提示成功
+        waitForMapIdle(finishOk, finishErr);
       } else {
         // Fallback to full 3D dataset
         loadJSON(dataBasePath + 'suzhou_buildings_3d.json', function(err2, data2) {
@@ -900,14 +982,47 @@
             state.dataLoaded.buildings = true;
             if (map.getSource('buildings')) map.getSource('buildings').setData(data2);
             updateBuildings();
-            showLayerToast('3D建筑图层加载完成', 'success', 2500);
+            waitForMapIdle(finishOk, finishErr);
           } else {
-            showLayerToast('3D建筑图层加载失败，请开启VPN代理后重试', 'error', 6000);
+            finishErr('3D建筑图层加载失败，请开启VPN代理后重试');
           }
-          cb();
         }, 45000);
       }
     }, 25000);
+  }
+
+  // 等待地图空闲(渲染完成)后回调；若已取消则不再回调成功
+  function waitForMapIdle(finishOk, finishErr) {
+    if (layerLoadToastTag !== 'buildings' && layerLoadToastTag !== 'temperature') {
+      // 加载已被取消，直接结束
+      return;
+    }
+    var done = false;
+    function cleanup() {
+      if (done) return;
+      done = true;
+      map.off('idle', onIdle);
+      if (layerLoadCancel) layerLoadCancel();
+      layerLoadCancel = null;
+      layerLoadToastTag = null;
+    }
+    function onIdle() {
+      if (done) return;
+      cleanup();
+      finishOk();
+    }
+    map.once('idle', onIdle);
+    // 保底：idle 可能不触发(图层隐藏)，用延时兜底
+    setTimeout(function() {
+      if (!done) {
+        map.off('idle', onIdle);
+        done = true;
+        if (layerLoadCancel) layerLoadCancel();
+        layerLoadCancel = null;
+        layerLoadToastTag = null;
+        finishOk();
+      }
+    }, 1500);
   }
 
   // 懒加载：地表温度图层（仅当开启时加载栅格，加速初次进入）
@@ -916,6 +1031,24 @@
     if (sourceData.lstBounds || tempLoading) return;
     tempLoading = true;
     showLayerToast('正在加载地表温度图层…', 'loading');
+    var cancelTimeout = startLoadTimeout('temperature', function() {
+      tempLoading = false;
+      showLayerToast('地表温度图层加载超时，请开启VPN代理后重试', 'error', 6000);
+    });
+    function finishOk() {
+      if (layerLoadToastTag === 'temperature') {
+        if (layerLoadCancel) layerLoadCancel();
+        layerLoadCancel = null;
+        layerLoadToastTag = null;
+      }
+      tempLoading = false;
+      showLayerToast('地表温度图层加载完成', 'success', 2500);
+    }
+    function finishErr(msg) {
+      if (layerLoadCancel) layerLoadCancel();
+      tempLoading = false;
+      showLayerToast(msg, 'error', 6000);
+    }
     loadJSON(dataBasePath + 'lst_bounds.json', function(err, data) {
       if (!err && data) {
         sourceData.lstBounds = data;
@@ -935,12 +1068,55 @@
           if (map.getLayer('gardens-line')) map.moveLayer('gardens-line');
           updateTemperatureLayer();
         }
-        showLayerToast('地表温度图层加载完成', 'success', 2500);
+        // 等待 webp 图片真正加载完成后再提示成功
+        waitForImageLoaded('temperature-overlay', finishOk, finishErr);
       } else {
-        showLayerToast('地表温度图层加载失败，请开启VPN代理后重试', 'error', 6000);
+        finishErr('地表温度图层加载失败，请开启VPN代理后重试');
       }
       updateLayerVisibility();
     }, 15000);
+  }
+
+  // 等待 image source 对应的图片加载完成；若已取消则不再提示成功
+  function waitForImageLoaded(sourceId, finishOk, finishErr) {
+    if (layerLoadToastTag !== 'temperature') return; // 已取消
+    var src = map && map.getSource && map.getSource(sourceId);
+    var img = src && src.image;
+    if (img && img.complete && img.naturalWidth > 0) {
+      finishOk();
+      return;
+    }
+    var done = false;
+    function cleanup() {
+      if (done) return;
+      done = true;
+      if (img) { img.onload = img.onerror = null; }
+      if (layerLoadCancel) layerLoadCancel();
+      layerLoadCancel = null;
+      layerLoadToastTag = null;
+    }
+    function onLoad() {
+      if (done) return;
+      cleanup();
+      finishOk();
+    }
+    function onErr() {
+      if (done) return;
+      cleanup();
+      finishErr('地表温度图层加载失败，请开启VPN代理后重试');
+    }
+    if (img) { img.onload = onLoad; img.onerror = onErr; }
+    // 保底：若干秒后图片仍未加载完成则视为成功(避免一直转圈)
+    var fallback = setTimeout(function() {
+      if (!done) {
+        done = true;
+        if (img) { img.onload = img.onerror = null; }
+        if (layerLoadCancel) layerLoadCancel();
+        layerLoadCancel = null;
+        layerLoadToastTag = null;
+        finishOk();
+      }
+    }, 4000);
   }
 
   function addGeoJSONSource(name, data) {
