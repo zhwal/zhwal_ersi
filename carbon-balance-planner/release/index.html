@@ -1715,7 +1715,7 @@ details.section-collapsible .collapsible-body {
         <div class="control-label">
           <span class="name">
             路径一：建筑高度约束
-            <span class="info-tip" data-tip="对应第三章路径一：古城限高令→低层形态→省电。仅对古城14.2km²范围内建筑生效。权重45%，为三条路径中最强碳避免路径。" tabindex="0" role="tooltip" aria-label="路径一说明">?</span>
+            <span class="info-tip" data-tip="对应第三章路径一：古城限高令→低层形态→省电。仅对古城14.2km²范围内建筑生效。权重35%。" tabindex="0" role="tooltip" aria-label="路径一说明">?</span>
           </span>
           <span class="value" id="val-height" aria-live="polite">24m</span>
         </div>
@@ -1732,7 +1732,7 @@ details.section-collapsible .collapsible-body {
         <div class="control-label">
           <span class="name">
             路径二：绿地覆盖率
-            <span class="info-tip" data-tip="对应第三章路径二：冷岛效应→省空调。权重45%。以2023年苏州建成区绿地率40%为基准。每±10%绿地变化→LST±0.6°C。调低→高温区扩张，调高→高温区萎缩。" tabindex="0" role="tooltip" aria-label="路径二说明">?</span>
+            <span class="info-tip" data-tip="对应第三章路径二：冷岛效应→省空调。权重40%。以2023年苏州建成区绿地率40%为基准。每±10%绿地变化→LST±0.6°C。调低→高温区扩张，调高→高温区萎缩。" tabindex="0" role="tooltip" aria-label="路径二说明">?</span>
           </span>
           <span class="value" id="val-green" aria-live="polite">40%</span>
         </div>
@@ -1749,7 +1749,7 @@ details.section-collapsible .collapsible-body {
         <div class="control-label">
           <span class="name">
             路径三：慢行网络覆盖率
-            <span class="info-tip" data-tip="对应第三章路径三：步行替代驾车→交通减排。权重10%（效应微弱）。15分钟步行半径约800–1000m（速度4–5km/h）。" tabindex="0" role="tooltip" aria-label="路径三说明">?</span>
+            <span class="info-tip" data-tip="对应第三章路径三：步行替代驾车→交通减排。权重25%。15分钟步行半径约800–1000m（速度4–5km/h）。" tabindex="0" role="tooltip" aria-label="路径三说明">?</span>
           </span>
           <span class="value" id="val-walk" aria-live="polite">45%</span>
         </div>
@@ -1989,7 +1989,7 @@ details.section-collapsible .collapsible-body {
 
           <p style="margin-bottom:0.4rem;"><strong>公式二：综合得分（含园林开关联动）</strong></p>
           <div style="background:var(--bg);padding:0.5rem 0.8rem;border-radius:4px;margin-bottom:0.5rem;font-family:var(--font-mono);font-size:0.7rem;line-height:1.8;">
-            Score = (P<sub>形态</sub>×0.45 + P<sub>冷岛</sub>×0.45 + P<sub>慢行</sub>×0.10) × C<sub>系数</sub><br>
+            Score = (P<sub>形态</sub>×0.35 + P<sub>冷岛</sub>×0.40 + P<sub>慢行</sub>×0.25) × C<sub>系数</sub><br>
             C<sub>系数</sub> = 0.85 + 0.15 × (保留碳汇 / 总碳汇)
           </div>
           <p style="margin-bottom:0.5rem;font-size:0.7rem;color:var(--muted);">C<sub>系数</sub> 反映园林保留比例：全部保留 = 1.0，全部移除 = 0.85。冷岛效应权重中，P<sub>冷岛</sub> 还会额外乘以冷岛强度保留比例。</p>
@@ -2000,7 +2000,7 @@ details.section-collapsible .collapsible-body {
           </div>
           <p style="margin-bottom:0.5rem;font-size:0.7rem;color:var(--muted);">综合得分反映规划参数优劣，低碳指数额外纳入绿地保留比例，保留越多指数越高。</p>
 
-          <p style="font-size:0.7rem;color:var(--muted);">权重依据：形态约束与冷岛效应各占45%（建筑运行能耗与绿地降温是城市低碳两大支柱），慢行替代占10%（交通减排总量有限但不可忽略）。学术参考：Zheng et al.(2019) 建筑高度-LST关系；Jiang et al.(2025) 碳平衡指数 CBI = CE/CA。</p>
+          <p style="font-size:0.7rem;color:var(--muted);">权重依据：冷岛效应占40%（绿地降温是城市低碳核心支柱），形态约束占35%（建筑运行能耗重要）、慢行替代占25%（交通减排不可忽略，苏州慢行网络领先）。评分基准：绿地率50%即满分（苏州现状约40%）、慢行覆盖率70%即满分。学术参考：Zheng et al.(2019) 建筑高度-LST关系；Jiang et al.(2025) 碳平衡指数 CBI = CE/CA。</p>
         </div>
       </details>
 

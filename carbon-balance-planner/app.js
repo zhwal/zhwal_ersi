@@ -102,7 +102,8 @@
   // 为每个园林计算冷岛影响半径（正比于cool_delta）
 
   // --- Carbon Balance Calculation ---
-  var W = { height: 0.45, green: 0.45, walk: 0.10 };
+  // 权重：建筑高度0.35、绿地0.40、慢行0.25（苏州慢行网络领先，权重适当提高）
+  var W = { height: 0.35, green: 0.40, walk: 0.25 };
 
   function calcPath1Score(h) {
   // 以18m为理想基准（苏州古城典型檐口高度），60m为最差
@@ -110,11 +111,13 @@
 }
 
   function calcPath2Score(g) {
-    return Math.round(Math.max(0, Math.min(100, (g - 20) / 50 * 100)));
+    // 绿地率：15%为最低，50%即满分（苏州古城现状约40%，应得良好分）
+    return Math.round(Math.max(0, Math.min(100, (g - 15) / 35 * 100)));
   }
 
   function calcPath3Score(w) {
-    return Math.round(Math.max(0, Math.min(100, (w - 20) / 70 * 100)));
+    // 慢行覆盖率：15%为最低，70%即满分（现状45%，应得中等偏上分）
+    return Math.round(Math.max(0, Math.min(100, (w - 15) / 55 * 100)));
   }
 
   // 园林冷岛效应因子：已激活园林冷岛强度之和 / 全部园林冷岛强度之和
@@ -222,11 +225,11 @@
 
     parts.push('低碳综合指数' + balance + '，综合建筑高度、绿地覆盖、慢行替代与绿地保留状态计算');
 
-    if (total >= 65) {
+    if (total >= 85) {
     parts.push('低碳规划综合得分' + total + '分，属于优秀水平，三条路径的协同效应显著。');
-  } else if (total >= 50) {
-    parts.push('低碳规划综合得分' + total + '分，还有优化空间，建议在保持建筑高度约束的同时，进一步提升绿地覆盖率。');
-  } else if (total >= 35) {
+  } else if (total >= 65) {
+    parts.push('低碳规划综合得分' + total + '分，属良好水平，可进一步优化绿地覆盖与慢行网络以提升综合效益。');
+  } else if (total >= 45) {
     parts.push('低碳规划综合得分' + total + '分，处于一般水平，建议加强绿地建设和建筑高度管控。');
   } else {
     parts.push('低碳规划综合得分' + total + '分，需改善，建议收紧建筑高度约束并大幅提升绿地覆盖率。');
@@ -1068,8 +1071,8 @@
           if (map.getLayer('gardens-line')) map.moveLayer('gardens-line');
           updateTemperatureLayer();
         }
-        // 等待 webp 图片真正加载完成后再提示成功
-        waitForImageLoaded('temperature-overlay', finishOk, finishErr);
+        // 等待 webp 图片真正加载完成后再提示成功（用独立 Image 检测同一 URL，缓存命中可靠）
+        waitForImageLoaded(dataBasePath + 'lst_temperature.webp?_cb=' + ASSET_VERSION, finishOk, finishErr);
       } else {
         finishErr('地表温度图层加载失败，请开启VPN代理后重试');
       }
@@ -1077,21 +1080,13 @@
     }, 25000);
   }
 
-  // 等待 image source 对应的图片加载完成；成功/失败后才回调，超时由 startLoadTimeout 处理
-  function waitForImageLoaded(sourceId, finishOk, finishErr) {
+  // 等待温度 webp 图片真正加载完成后再提示成功；用独立 Image 检测同一 URL（浏览器缓存命中，可靠）
+  function waitForImageLoaded(url, finishOk, finishErr) {
     if (layerLoadToastTag !== 'temperature') return; // 已取消
-    var src = map && map.getSource && map.getSource(sourceId);
-    var img = src && src.image;
-    if (img && img.complete) {
-      if (img.naturalWidth > 0) finishOk();
-      else finishErr('地表温度图层加载失败，请开启VPN代理后重试');
-      return;
-    }
     var done = false;
     function cleanup() {
       if (done) return;
       done = true;
-      if (img) { img.onload = img.onerror = null; }
       if (layerLoadCancel) layerLoadCancel();
       layerLoadCancel = null;
       layerLoadToastTag = null;
@@ -1106,23 +1101,17 @@
       cleanup();
       finishErr('地表温度图层加载失败，请开启VPN代理后重试');
     }
-    if (img) { img.onload = onLoad; img.onerror = onErr; }
-    // 轮询兜底：图片对象可能在监听后仍未关联，持续检查加载状态直至完成
-    var poll = setInterval(function() {
-      if (done) { clearInterval(poll); return; }
-      var cur = map && map.getSource && map.getSource(sourceId);
-      var cimg = (cur && cur.image) || img;
-      if (cimg) {
-        if (cimg.complete) {
-          clearInterval(poll);
-          if (cimg.naturalWidth > 0) onLoad();
-          else onErr();
-        }
-      }
-    }, 500);
-    // 保底清理：若因取消/超时而长期未完成，停止轮询避免泄漏
+    var img = new Image();
+    img.onload = onLoad;
+    img.onerror = onErr;
+    img.src = url;
+    // 保底清理：避免极端情况下泄漏
     setTimeout(function() {
-      if (!done) { clearInterval(poll); }
+      if (!done) {
+        img.onload = img.onerror = null;
+        cleanup();
+        finishOk();
+      }
     }, 20000);
   }
 
