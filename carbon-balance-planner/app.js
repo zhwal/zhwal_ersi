@@ -379,6 +379,9 @@
     if (!sw) return;
     sw.addEventListener('change', function() {
       state.layerVisible[key] = sw.checked;
+      // 按需懒加载：开启建筑/温度图层时即时加载对应重量级数据
+      if (sw.checked && key === 'buildings') ensureBuildingsLoaded();
+      if (sw.checked && key === 'temperature') ensureTemperatureLoaded();
       updateLayerVisibility();
     });
   });
@@ -827,55 +830,6 @@
 
     // Phase 2: heavy data loaded progressively after map is shown
     function loadDeferredData() {
-      // Load temperature overlay (image source)
-      loadJSON(dataBasePath + 'lst_bounds.json', function(err, data) {
-        if (!err && data) {
-          sourceData.lstBounds = data;
-          state.dataLoaded.temperature = true;
-          if (!map.getSource('temperature-overlay')) {
-            addImageSource('temperature-overlay', dataBasePath + 'lst_temperature.webp?_cb=' + ASSET_VERSION, data);
-            if (!map.getLayer('temperature-layer')) {
-              map.addLayer({
-                id: 'temperature-layer',
-                type: 'raster',
-                source: 'temperature-overlay',
-                paint: { 'raster-opacity': 0.25, 'raster-fade-duration': 0, 'raster-saturation': 0.55, 'raster-contrast': 0.55 }
-              });
-            }
-            // 确保古典园林图层始终置顶，冷岛叠加层在园林填充之上
-            if (map.getLayer('gardens-fill')) map.moveLayer('gardens-fill');
-            if (map.getLayer('cold-island-overlay')) map.moveLayer('cold-island-overlay', 'gardens-line');
-            if (map.getLayer('gardens-line')) map.moveLayer('gardens-line');
-            updateTemperatureLayer();
-            updateLayerVisibility();
-          }
-        }
-      }, 15000);
-
-      // Load buildings: lite first, fallback to full if needed
-      loadJSON(dataBasePath + 'suzhou_buildings_gusu_lite.json', function(err, data) {
-        if (!err && data) {
-          sourceData.buildings = data;
-          state.dataLoaded.buildings = true;
-          if (map.getSource('buildings')) {
-            map.getSource('buildings').setData(data);
-          } else if (map.getLayer('buildings-3d')) {
-            // Already built with dummy data; update
-          }
-          updateBuildings();
-        } else {
-          // Fallback to full 3D dataset
-          loadJSON(dataBasePath + 'suzhou_buildings_3d.json', function(err2, data2) {
-            if (!err2 && data2) {
-              sourceData.buildings = data2;
-              state.dataLoaded.buildings = true;
-              if (map.getSource('buildings')) map.getSource('buildings').setData(data2);
-              updateBuildings();
-            }
-          }, 45000);
-        }
-      }, 25000);
-
       // Load road network (slow travel) - 坐标已在WGS84
       loadJSON(dataBasePath + 'suzhou_roads_gusu.json', function(err, data) {
         if (!err && data) {
@@ -895,6 +849,66 @@
         }
       }, 25000);
     }
+  }
+
+  // 懒加载：3D 建筑数据（9.6MB）仅在用户开启图层时加载，避免初次进入卡顿
+  var buildingsLoading = false;
+  function ensureBuildingsLoaded(cb) {
+    cb = cb || function() {};
+    if (state.dataLoaded.buildings) return cb();
+    if (buildingsLoading) return; // 已在加载中
+    buildingsLoading = true;
+    loadJSON(dataBasePath + 'suzhou_buildings_gusu_lite.json', function(err, data) {
+      if (!err && data) {
+        sourceData.buildings = data;
+        state.dataLoaded.buildings = true;
+        if (map.getSource('buildings')) {
+          map.getSource('buildings').setData(data);
+        }
+        updateBuildings();
+        cb();
+      } else {
+        // Fallback to full 3D dataset
+        loadJSON(dataBasePath + 'suzhou_buildings_3d.json', function(err2, data2) {
+          if (!err2 && data2) {
+            sourceData.buildings = data2;
+            state.dataLoaded.buildings = true;
+            if (map.getSource('buildings')) map.getSource('buildings').setData(data2);
+            updateBuildings();
+          }
+          cb();
+        }, 45000);
+      }
+    }, 25000);
+  }
+
+  // 懒加载：地表温度图层（仅当开启时加载栅格，加速初次进入）
+  var tempLoading = false;
+  function ensureTemperatureLoaded() {
+    if (sourceData.lstBounds || tempLoading) return;
+    tempLoading = true;
+    loadJSON(dataBasePath + 'lst_bounds.json', function(err, data) {
+      if (!err && data) {
+        sourceData.lstBounds = data;
+        state.dataLoaded.temperature = true;
+        if (!map.getSource('temperature-overlay')) {
+          addImageSource('temperature-overlay', dataBasePath + 'lst_temperature.webp?_cb=' + ASSET_VERSION, data);
+          if (!map.getLayer('temperature-layer')) {
+            map.addLayer({
+              id: 'temperature-layer',
+              type: 'raster',
+              source: 'temperature-overlay',
+              paint: { 'raster-opacity': 0.25, 'raster-fade-duration': 0, 'raster-saturation': 0.55, 'raster-contrast': 0.55 }
+            });
+          }
+          if (map.getLayer('gardens-fill')) map.moveLayer('gardens-fill');
+          if (map.getLayer('cold-island-overlay')) map.moveLayer('cold-island-overlay', 'gardens-line');
+          if (map.getLayer('gardens-line')) map.moveLayer('gardens-line');
+          updateTemperatureLayer();
+        }
+      }
+      updateLayerVisibility();
+    }, 15000);
   }
 
   function addGeoJSONSource(name, data) {
