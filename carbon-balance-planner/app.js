@@ -1074,16 +1074,17 @@
         finishErr('地表温度图层加载失败，请开启VPN代理后重试');
       }
       updateLayerVisibility();
-    }, 15000);
+    }, 25000);
   }
 
-  // 等待 image source 对应的图片加载完成；若已取消则不再提示成功
+  // 等待 image source 对应的图片加载完成；成功/失败后才回调，超时由 startLoadTimeout 处理
   function waitForImageLoaded(sourceId, finishOk, finishErr) {
     if (layerLoadToastTag !== 'temperature') return; // 已取消
     var src = map && map.getSource && map.getSource(sourceId);
     var img = src && src.image;
-    if (img && img.complete && img.naturalWidth > 0) {
-      finishOk();
+    if (img && img.complete) {
+      if (img.naturalWidth > 0) finishOk();
+      else finishErr('地表温度图层加载失败，请开启VPN代理后重试');
       return;
     }
     var done = false;
@@ -1106,17 +1107,23 @@
       finishErr('地表温度图层加载失败，请开启VPN代理后重试');
     }
     if (img) { img.onload = onLoad; img.onerror = onErr; }
-    // 保底：若干秒后图片仍未加载完成则视为成功(避免一直转圈)
-    var fallback = setTimeout(function() {
-      if (!done) {
-        done = true;
-        if (img) { img.onload = img.onerror = null; }
-        if (layerLoadCancel) layerLoadCancel();
-        layerLoadCancel = null;
-        layerLoadToastTag = null;
-        finishOk();
+    // 轮询兜底：图片对象可能在监听后仍未关联，持续检查加载状态直至完成
+    var poll = setInterval(function() {
+      if (done) { clearInterval(poll); return; }
+      var cur = map && map.getSource && map.getSource(sourceId);
+      var cimg = (cur && cur.image) || img;
+      if (cimg) {
+        if (cimg.complete) {
+          clearInterval(poll);
+          if (cimg.naturalWidth > 0) onLoad();
+          else onErr();
+        }
       }
-    }, 4000);
+    }, 500);
+    // 保底清理：若因取消/超时而长期未完成，停止轮询避免泄漏
+    setTimeout(function() {
+      if (!done) { clearInterval(poll); }
+    }, 20000);
   }
 
   function addGeoJSONSource(name, data) {
